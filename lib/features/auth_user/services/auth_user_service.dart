@@ -149,11 +149,15 @@ class AuthUserService {
     required String newPassword,
     required String confirmPassword,
   }) async {
-    final email = box.read(
-      'user',
-    )?['email']; // ✅ Ambil email dari local storage
+    // 🔍 Ambil data user dari storage
+    final user = box.read('user');
+    print('📦 Data user dari storage: $user');
 
-    if (email == null) {
+    final email = user?['email'];
+    print('📧 Email yang digunakan: $email');
+
+    // ❗ Validasi apakah email tersedia
+    if (email == null || email.isEmpty) {
       print('❌ Email tidak ditemukan di storage');
       return false;
     }
@@ -169,6 +173,7 @@ class AuthUserService {
         },
       );
 
+      print('✅ Change password response: ${response.data}');
       return response.statusCode == 200;
     } on DioException catch (e) {
       print(

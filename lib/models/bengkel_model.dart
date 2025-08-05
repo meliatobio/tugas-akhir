@@ -19,8 +19,8 @@ class StoreModel {
   final double? rating;
   final List<ServiceModel> services;
   final List<ReviewModel> reviews;
-  final String? photo; // ✅ Tambahkan ini
-  final bool isActive; // ✅ Tambahkan ini
+  final String? photo;
+  final bool isActive;
 
   StoreModel({
     required this.id,
@@ -49,7 +49,6 @@ class StoreModel {
       id: json['id'] is int
           ? json['id']
           : int.tryParse(json['id'].toString()) ?? -1,
-
       userId: json['user_id'] ?? 0,
       storeName: json['store_name'] ?? '',
       address: json['address'],
@@ -79,7 +78,48 @@ class StoreModel {
             )
           : [],
       photo: 'https://via.placeholder.com/150', // contoh foto dummy
-      isActive: true, // anggap aktif semua
+      isActive: true,
+    );
+  }
+
+  /// ✅ Tambahkan copyWith
+  StoreModel copyWith({
+    int? id,
+    int? userId,
+    String? storeName,
+    String? address,
+    String? contact,
+    String? contactName,
+    String? image,
+    double? long,
+    double? lat,
+    String? openAt,
+    String? closeAt,
+    List<String>? acceptedVehicleTypes,
+    double? rating,
+    List<ServiceModel>? services,
+    List<ReviewModel>? reviews,
+    String? photo,
+    bool? isActive,
+  }) {
+    return StoreModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      storeName: storeName ?? this.storeName,
+      address: address ?? this.address,
+      contact: contact ?? this.contact,
+      contactName: contactName ?? this.contactName,
+      image: image ?? this.image,
+      long: long ?? this.long,
+      lat: lat ?? this.lat,
+      openAt: openAt ?? this.openAt,
+      closeAt: closeAt ?? this.closeAt,
+      acceptedVehicleTypes: acceptedVehicleTypes ?? this.acceptedVehicleTypes,
+      rating: rating ?? this.rating,
+      services: services ?? this.services,
+      reviews: reviews ?? this.reviews,
+      photo: photo ?? this.photo,
+      isActive: isActive ?? this.isActive,
     );
   }
 }

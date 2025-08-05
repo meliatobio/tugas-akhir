@@ -21,11 +21,13 @@ class _ManajemenBengkelScreenState extends State<ManajemenBengkelScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manajemen Bengkel'),
-        leading: ElevatedButton(
+        leading: IconButton(
           onPressed: () {
-            Get.back(); // kembali ke screen sebelumnya (HomeOwnerScreen)
+            Get.back();
           },
-          child: null,
+          icon: const Icon(Icons.arrow_back),
+          color: Colors.black,
+          iconSize: 24, // kecilkan ukuran
         ),
       ),
 

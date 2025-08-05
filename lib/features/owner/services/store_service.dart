@@ -234,4 +234,22 @@ class StoreService {
       return [];
     }
   }
+
+  Future<List<StoreModel>> getAllOwnedStores(String token) async {
+    final response = await dio.get(
+      'owned/store',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = response.data['data'];
+      if (data is List) {
+        return data.map((e) => StoreModel.fromJson(e)).toList();
+      } else {
+        throw Exception("Format data tidak valid");
+      }
+    } else {
+      throw Exception("Gagal memuat data bengkel: ${response.statusCode}");
+    }
+  }
 }
