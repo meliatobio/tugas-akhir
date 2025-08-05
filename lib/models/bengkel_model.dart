@@ -1,0 +1,85 @@
+import 'dart:convert';
+
+import 'service_model.dart';
+import 'review_model.dart';
+
+class StoreModel {
+  final int id;
+  final int userId;
+  final String storeName;
+  final String? address;
+  final String? contact;
+  final String? contactName;
+  final String? image;
+  final double? long;
+  final double? lat;
+  final String? openAt;
+  final String? closeAt;
+  final List<String> acceptedVehicleTypes;
+  final double? rating;
+  final List<ServiceModel> services;
+  final List<ReviewModel> reviews;
+  final String? photo; // ✅ Tambahkan ini
+  final bool isActive; // ✅ Tambahkan ini
+
+  StoreModel({
+    required this.id,
+    required this.userId,
+    required this.storeName,
+    this.address,
+    this.contact,
+    this.contactName,
+    this.image,
+    this.long,
+    this.lat,
+    this.openAt,
+    this.closeAt,
+    this.acceptedVehicleTypes = const [],
+    this.rating,
+    this.services = const [],
+    this.reviews = const [],
+    this.photo,
+    required this.isActive,
+  });
+
+  factory StoreModel.fromJson(Map<String, dynamic> json) {
+    print('📦 Store JSON: ${jsonEncode(json)}');
+
+    return StoreModel(
+      id: json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id'].toString()) ?? -1,
+
+      userId: json['user_id'] ?? 0,
+      storeName: json['store_name'] ?? '',
+      address: json['address'],
+      contact: json['contact'],
+      contactName: json['contact_name'],
+      image: json['image'],
+      long: json['long'] != null
+          ? double.tryParse(json['long'].toString())
+          : null,
+      lat: json['lat'] != null ? double.tryParse(json['lat'].toString()) : null,
+      openAt: json['open_at'],
+      closeAt: json['close_at'],
+      acceptedVehicleTypes: List<String>.from(
+        json['accepted_vehicle_types'] ?? [],
+      ),
+      rating: (json['rating'] != null)
+          ? double.tryParse(json['rating'].toString())
+          : null,
+      services: json['services'] != null
+          ? List<ServiceModel>.from(
+              json['services'].map((x) => ServiceModel.fromJson(x)),
+            )
+          : [],
+      reviews: json['reviews'] != null
+          ? List<ReviewModel>.from(
+              json['reviews'].map((x) => ReviewModel.fromJson(x)),
+            )
+          : [],
+      photo: 'https://via.placeholder.com/150', // contoh foto dummy
+      isActive: true, // anggap aktif semua
+    );
+  }
+}
