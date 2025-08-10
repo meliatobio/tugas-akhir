@@ -1,6 +1,7 @@
 import 'package:bengkel/constants/api_base.dart';
 import 'package:dio/dio.dart';
 import 'package:bengkel/models/user_model.dart';
+import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 
 class AuthUserService {
@@ -33,7 +34,7 @@ class AuthUserService {
       );
 
       if (response.statusCode == 200) {
-        print('✅ Login response: ${response.data}');
+        debugPrint('✅ Login response: ${response.data}');
         final user = UserModel.fromJson(response.data['user']);
         user.token = response.data['token'];
 
@@ -41,14 +42,16 @@ class AuthUserService {
         await box.write('token', user.token);
         await box.write('role', user.role);
         await box.write('user', user.toJson());
+        await box.write('token', user.token);
+        await box.write('userId', user.id); // simpan userId langsung
 
-        print('✅ Token disimpan: ${user.token}');
-        print('✅ Role disimpan: ${user.role}');
+        debugPrint('✅ Token disimpan: ${user.token}');
+        debugPrint('✅ Role disimpan: ${user.role}');
 
         return user;
       }
     } on DioException catch (e) {
-      print(
+      debugPrint(
         '❌ Login error: ${e.response?.statusCode} - ${e.response?.data ?? e.message}',
       );
     }
@@ -61,15 +64,29 @@ class AuthUserService {
     try {
       final response = await _dio.post('auth/register', data: data);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Register success: ${response.data}');
+        debugPrint('✅ Register success: ${response.data}');
         return true;
-      } else {
-        print('❌ Register failed: ${response.statusCode} - ${response.data}');
       }
     } on DioException catch (e) {
-      print(
-        '❌ Register error: ${e.response?.statusCode} - ${e.response?.data ?? e.message}',
+      final statusCode = e.response?.statusCode;
+      final responseData = e.response?.data;
+
+      debugPrint(
+        '❌ Register error: $statusCode - ${responseData ?? e.message}',
       );
+
+      // ✅ Tangani error 400 maupun 422
+      if ((statusCode == 400 || statusCode == 422) && responseData != null) {
+        final errors = responseData['errors'];
+        if (errors != null && errors['email'] != null) {
+          final errorMessage =
+              errors['email'][0]; // "The email has already been taken."
+          throw errorMessage;
+        }
+      }
+
+      // Jika bukan error yang dikenali
+      throw 'Registrasi gagal. Silakan coba lagi.';
     }
 
     return false;
@@ -80,11 +97,11 @@ class AuthUserService {
     try {
       final response = await _dio.get('profile');
       if (response.statusCode == 200) {
-        print('📥 Profil berhasil: ${response.data}');
+        debugPrint('📥 Profil berhasil: ${response.data}');
         return response.data['user'] ?? response.data['data'];
       }
     } on DioException catch (e) {
-      print(
+      debugPrint(
         '❌ Get profile error: ${e.response?.statusCode} - ${e.response?.data ?? e.message}',
       );
     }
@@ -97,10 +114,10 @@ class AuthUserService {
     try {
       final response = await _dio.patch('profile/update', data: data);
 
-      print('📝 Update Profile Response: ${response.data}');
+      debugPrint('📝 Update Profile Response: ${response.data}');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      print(
+      debugPrint(
         '❌ Update profile error: ${e.response?.statusCode} - ${e.response?.data ?? e.message}',
       );
     }
@@ -114,7 +131,7 @@ class AuthUserService {
     final userMap = box.read('user');
 
     if (token == null || userMap == null) {
-      print('⚠️ Token atau user kosong di GetStorage');
+      debugPrint('⚠️ Token atau user kosong di GetStorage');
       return;
     }
 
@@ -127,7 +144,7 @@ class AuthUserService {
       'phone_number': userMap['phone_number'],
     };
 
-    print('📤 Mengirim update profil user dari storage: $data');
+    debugPrint('📤 Mengirim update profil user dari storage: $data');
 
     await updateProfile(data);
   }
@@ -138,7 +155,7 @@ class AuthUserService {
       final response = await _dio.post('auth/logout');
       return response.statusCode == 200;
     } catch (e) {
-      print('❌ Logout error: $e');
+      debugPrint('❌ Logout error: $e');
       return false;
     }
   }
@@ -151,14 +168,14 @@ class AuthUserService {
   }) async {
     // 🔍 Ambil data user dari storage
     final user = box.read('user');
-    print('📦 Data user dari storage: $user');
+    debugPrint('📦 Data user dari storage: $user');
 
     final email = user?['email'];
-    print('📧 Email yang digunakan: $email');
+    debugPrint('📧 Email yang digunakan: $email');
 
     // ❗ Validasi apakah email tersedia
     if (email == null || email.isEmpty) {
-      print('❌ Email tidak ditemukan di storage');
+      debugPrint('❌ Email tidak ditemukan di storage');
       return false;
     }
 
@@ -173,15 +190,15 @@ class AuthUserService {
         },
       );
 
-      print('✅ Change password response: ${response.data}');
+      debugPrint('✅ Change password response: ${response.data}');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      print(
+      debugPrint(
         '❌ Change password error: ${e.response?.statusCode} - ${e.response?.data ?? e.message}',
       );
       return false;
     } catch (e) {
-      print('❌ Change password unexpected error: $e');
+      debugPrint('❌ Change password unexpected error: $e');
       return false;
     }
   }

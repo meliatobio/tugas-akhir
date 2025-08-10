@@ -3,6 +3,33 @@ import 'package:bengkel/features/auth_user/controllers/register_user_controller.
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+// Wave belakang (kuning pucat)
+class TopWaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.lineTo(0, size.height - 50);
+    path.quadraticBezierTo(
+      size.width * 0.25,
+      size.height,
+      size.width * 0.5,
+      size.height - 40,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.75,
+      size.height - 80,
+      size.width,
+      size.height - 20,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
 class RegisterUserScreen extends StatefulWidget {
   const RegisterUserScreen({super.key});
 
@@ -59,7 +86,7 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withAlpha(38),
             blurRadius: 6,
             offset: const Offset(0, 4),
           ),
@@ -90,98 +117,153 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(36),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                "Register",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 30),
-              _buildInputField("Nama", namaController),
-              const SizedBox(height: 16),
-              _buildInputField(
-                "E-mail",
-                emailController,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              _buildInputField(
-                "No Telepon",
-                telponController,
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              _buildInputField("Alamat", alamatController),
-              const SizedBox(height: 16),
-              _buildInputField(
-                "Password",
-                passwordController,
-                obscure: isPasswordHidden,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    isPasswordHidden ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.blueAccent,
-                  ),
-                  onPressed: () {
-                    setState(() => isPasswordHidden = !isPasswordHidden);
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-              Obx(
-                () => ElevatedButton(
-                  onPressed: registerController.isLoading.value
-                      ? null
-                      : _handleRegister,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF84B3E8),
-                    minimumSize: const Size(250, 50),
-                    elevation: 8,
-                    shadowColor: Colors.black.withOpacity(0.4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Header Wave
+            Stack(
+              children: [
+                // Layer belakang
+                Positioned(
+                  top: 20,
+                  left: 0,
+                  right: 0,
+                  child: ClipPath(
+                    clipper: TopWaveClipper(),
+                    child: Container(
+                      height: 220,
+                      color: const Color(0xFFFFF4CF),
                     ),
                   ),
-                  child: registerController.isLoading.value
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "Register",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Sudah punya akun?"),
-                  TextButton(
-                    onPressed: () => Get.toNamed(Routers.loginuser),
-                    child: const Text(
-                      "Login Disini",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                // Layer depan
+                ClipPath(
+                  clipper: TopWaveClipper(),
+                  child: Container(
+                    height: 220,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFFFE082), Color(0xFFFFC107)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                     ),
                   ),
+                ),
+                SafeArea(
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.black),
+                    onPressed: () {
+                      Get.offAllNamed(
+                        Routers.registerrole,
+                      ); // arahkan ke register_role
+                    },
+                  ),
+                ),
+                // Title
+                Positioned(
+                  top: 100,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Text(
+                      "Register",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Form
+            Padding(
+              padding: const EdgeInsets.all(36),
+              child: Column(
+                children: [
+                  _buildInputField("Nama", namaController),
+                  const SizedBox(height: 16),
+                  _buildInputField(
+                    "E-mail",
+                    emailController,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInputField(
+                    "No Telepon",
+                    telponController,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInputField("Alamat", alamatController),
+                  const SizedBox(height: 16),
+                  _buildInputField(
+                    "Password",
+                    passwordController,
+                    obscure: isPasswordHidden,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isPasswordHidden
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.grey[500],
+                      ),
+                      onPressed: () {
+                        setState(() => isPasswordHidden = !isPasswordHidden);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Obx(
+                    () => ElevatedButton(
+                      onPressed: registerController.isLoading.value
+                          ? null
+                          : _handleRegister,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFC107),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        minimumSize: const Size(double.infinity, 50),
+                        elevation: 0,
+                      ),
+                      child: registerController.isLoading.value
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Register",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Sudah punya akun?"),
+                      TextButton(
+                        onPressed: () => Get.toNamed(Routers.login),
+                        child: const Text(
+                          "Login Disini",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

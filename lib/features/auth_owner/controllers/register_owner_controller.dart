@@ -49,7 +49,7 @@ class RegisterOwnerController extends GetxController {
 
     if (storeSuccess) {
       Get.snackbar("Berhasil", "Registrasi Owner & Bengkel berhasil!");
-      Get.toNamed(Routers.loginowner);
+      Get.toNamed(Routers.login);
     } else {
       Get.snackbar("Gagal", "Registrasi bengkel gagal.");
     }

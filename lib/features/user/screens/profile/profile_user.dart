@@ -42,7 +42,7 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
         }
       }
     } catch (e) {
-      print('Error loading profile: $e');
+      debugPrint('Error loading profile: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -179,148 +179,264 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        title: const Text("Profile"),
-        centerTitle: false,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _profile == null
-          ? const Center(child: Text("Gagal memuat data profil."))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Column(
-                      children: [
-                        _buildProfileImage(_profile!['profile_pict']),
-                        const SizedBox(height: 12),
-                        Text(
-                          "Hi, ${_profile!['name'] ?? '-'}",
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                      ],
+      body: Stack(
+        children: [
+          // Wave kuning pucat (layer bawah)
+          ClipPath(
+            clipper: WaveClipper2(),
+            child: Container(height: 220, color: Colors.yellow.shade200),
+          ),
+          // Wave kuning tua (layer atas)
+          ClipPath(
+            clipper: WaveClipper1(),
+            child: Container(height: 200, color: Colors.amber),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                AppBar(
+                  title: const Text(
+                    "Profile",
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
                   ),
-                  _buildTextField("Name", _profile!['name']),
-                  _buildTextField("Email", _profile!['email']),
-                  _buildTextField("No. Telepon", _profile!['phone_number']),
-                  _buildTextField("Alamat", _profile!['address']),
-                  const SizedBox(height: 5),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Get.toNamed('/editprofileuser');
-                          },
-                          icon: const Icon(Icons.edit, size: 18),
-                          label: const Text(
-                            "Edit",
-                            style: TextStyle(fontSize: 16),
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  foregroundColor: Colors.black,
+                  centerTitle: false,
+                ),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _profile == null
+                      ? const Center(child: Text("Gagal memuat data profil."))
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 25,
                           ),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.black,
-                            backgroundColor: Colors.white,
-                            elevation: 2,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _showChangePasswordDialog,
-                          icon: const Icon(Icons.lock_outline),
-                          label: const Text("Ubah Password"),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Colors.orange,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final confirmed = await Get.dialog<bool>(
-                              AlertDialog(
-                                title: const Text("Konfirmasi Logout"),
-                                content: const Text(
-                                  "Apakah kamu yakin ingin logout?",
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Center(
+                                child: Column(
+                                  children: [
+                                    _buildProfileImage(
+                                      _profile!['profile_pict'],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      "Hi, ${_profile!['name'] ?? '-'}",
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 30),
+                                  ],
                                 ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Get.back(result: false),
-                                    child: const Text("Batal"),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Get.back(result: true),
-                                    child: const Text("Logout"),
+                              ),
+                              _buildTextField("Name", _profile!['name']),
+                              _buildTextField("Email", _profile!['email']),
+                              _buildTextField(
+                                "No. Telepon",
+                                _profile!['phone_number'],
+                              ),
+                              _buildTextField("Alamat", _profile!['address']),
+                              const SizedBox(height: 5),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        Get.toNamed('/editprofileuser');
+                                      },
+                                      icon: const Icon(Icons.edit, size: 18),
+                                      label: const Text(
+                                        "Edit",
+                                        style: TextStyle(fontSize: 16),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        foregroundColor: Colors.black,
+                                        backgroundColor: Colors.white,
+                                        elevation: 2,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                            );
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: _showChangePasswordDialog,
+                                      icon: const Icon(Icons.lock_outline),
+                                      label: const Text("Ubah Password"),
+                                      style: ElevatedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        backgroundColor: Colors.orange,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        final confirmed = await Get.dialog<bool>(
+                                          AlertDialog(
+                                            title: const Text(
+                                              "Konfirmasi Logout",
+                                            ),
+                                            content: const Text(
+                                              "Apakah kamu yakin ingin logout?",
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Get.back(result: false),
+                                                child: const Text("Batal"),
+                                              ),
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Get.back(result: true),
+                                                child: const Text("Logout"),
+                                              ),
+                                            ],
+                                          ),
+                                        );
 
-                            if (confirmed == true) {
-                              final success = await _authService.logout();
-                              if (success) {
-                                final box = GetStorage();
-                                await box.erase();
-                                _authService.setToken('');
-                                Get.offAllNamed(Routers.start);
-                              } else {
-                                Get.snackbar(
-                                  "Logout Gagal",
-                                  "Gagal logout. Coba lagi nanti.",
-                                  backgroundColor: Colors.red,
-                                  colorText: Colors.white,
-                                );
-                              }
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            "Logout",
-                            style: TextStyle(color: Colors.white),
+                                        if (confirmed == true) {
+                                          final success = await _authService
+                                              .logout();
+                                          if (success) {
+                                            final box = GetStorage();
+                                            await box.erase();
+                                            _authService.setToken('');
+                                            Get.offAllNamed(Routers.login);
+                                          } else {
+                                            Get.snackbar(
+                                              "Logout Gagal",
+                                              "Gagal logout. Coba lagi nanti.",
+                                              backgroundColor: Colors.red,
+                                              colorText: Colors.white,
+                                            );
+                                          }
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Logout",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
+        ],
+      ),
     );
   }
+}
+
+// Wave kuning tua (atas)
+class WaveClipper1 extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    var path = Path();
+    path.lineTo(0, size.height - 50);
+    var firstControlPoint = Offset(size.width / 4, size.height);
+    var firstEndPoint = Offset(size.width / 2, size.height - 40);
+    var secondControlPoint = Offset(size.width * 3 / 4, size.height - 80);
+    var secondEndPoint = Offset(size.width, size.height - 20);
+    path.quadraticBezierTo(
+      firstControlPoint.dx,
+      firstControlPoint.dy,
+      firstEndPoint.dx,
+      firstEndPoint.dy,
+    );
+    path.quadraticBezierTo(
+      secondControlPoint.dx,
+      secondControlPoint.dy,
+      secondEndPoint.dx,
+      secondEndPoint.dy,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+// Wave kuning pucat (bawah)
+class WaveClipper2 extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    var path = Path();
+    path.lineTo(0, size.height - 40);
+    var firstControlPoint = Offset(size.width / 4, size.height - 10);
+    var firstEndPoint = Offset(size.width / 2, size.height - 60);
+    var secondControlPoint = Offset(size.width * 3 / 4, size.height - 110);
+    var secondEndPoint = Offset(size.width, size.height - 50);
+    path.quadraticBezierTo(
+      firstControlPoint.dx,
+      firstControlPoint.dy,
+      firstEndPoint.dx,
+      firstEndPoint.dy,
+    );
+    path.quadraticBezierTo(
+      secondControlPoint.dx,
+      secondControlPoint.dy,
+      secondEndPoint.dx,
+      secondEndPoint.dy,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

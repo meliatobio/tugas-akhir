@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:bengkel/app/routers.dart';
 import 'package:bengkel/constants/api_base.dart';
@@ -16,6 +17,8 @@ class SearchBengkelScreen extends StatefulWidget {
 
 class _SearchBengkelScreenState extends State<SearchBengkelScreen> {
   List<StoreModel> searchResults = [];
+  Timer? _debounce;
+
   final TextEditingController _searchController = TextEditingController();
   final box = GetStorage();
   bool isLoading = false;
@@ -24,6 +27,13 @@ class _SearchBengkelScreenState extends State<SearchBengkelScreen> {
   void initState() {
     super.initState();
     fetchAllStores();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchAllStores() async {
@@ -56,14 +66,14 @@ class _SearchBengkelScreenState extends State<SearchBengkelScreen> {
         });
       }
     } catch (e) {
-      print("Error saat fetch all stores: $e");
+      debugPrint("Error saat fetch all stores: $e");
       setState(() => isLoading = false);
     }
   }
 
   Future<void> searchStore(String keyword) async {
     final token = box.read('token');
-    final url = Uri.parse('${ApiBase.baseUrl}store?search=$keyword');
+    final url = Uri.parse('${ApiBase.baseUrl}store');
 
     setState(() => isLoading = true);
 
@@ -80,8 +90,14 @@ class _SearchBengkelScreenState extends State<SearchBengkelScreen> {
         final body = json.decode(response.body);
         final List<dynamic> data = body['data'];
 
+        // Filter secara lokal di Flutter
+        final filtered = data.where((e) {
+          final name = (e['store_name'] as String).toLowerCase();
+          return name.startsWith(keyword.toLowerCase());
+        }).toList();
+
         setState(() {
-          searchResults = data.map((e) => StoreModel.fromJson(e)).toList();
+          searchResults = filtered.map((e) => StoreModel.fromJson(e)).toList();
           isLoading = false;
         });
       } else {
@@ -91,9 +107,20 @@ class _SearchBengkelScreenState extends State<SearchBengkelScreen> {
         });
       }
     } catch (e) {
-      print("Error saat search: $e");
+      debugPrint("Error saat search: $e");
       setState(() => isLoading = false);
     }
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (query.trim().isEmpty) {
+        fetchAllStores();
+      } else {
+        searchStore(query.trim());
+      }
+    });
   }
 
   @override
@@ -114,13 +141,7 @@ class _SearchBengkelScreenState extends State<SearchBengkelScreen> {
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: (value) {
-                if (value.trim().isEmpty) {
-                  fetchAllStores();
-                } else if (value.length >= 1) {
-                  searchStore(value);
-                }
-              },
+              onChanged: _onSearchChanged,
             ),
           ),
           Expanded(

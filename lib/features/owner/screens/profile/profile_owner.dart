@@ -16,8 +16,17 @@ class ProfileOwnerScreen extends StatefulWidget {
 
 class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
   final storeService = StoreService();
+  bool isEditingUser = false;
+  bool isUserLoading = false;
+  final StoreService _authService = StoreService();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController addressController = TextEditingController();
+  final email = GetStorage().read('email');
 
-  late UserModel user;
+  UserModel? user;
+
   String token = '';
   bool isLoading = true;
   List<StoreModel> localStoreList = [];
@@ -38,11 +47,24 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
   @override
   void initState() {
     super.initState();
+
+    final userMap = GetStorage().read('user');
+    if (userMap != null) {
+      user = UserModel.fromJson(userMap);
+    } else {
+      debugPrint("User tidak ditemukan di storage");
+      return; // ⛔ Hindari jalankan _initializeData kalau user null
+    }
+
     _initializeData();
   }
 
   Future<void> _initializeData() async {
     final box = GetStorage();
+    nameController.text = user!.name;
+    emailController.text = user!.email;
+    phoneController.text = user!.phone;
+    addressController.text = user!.address;
 
     final dynamic userRaw = box.read('user');
     final savedToken = box.read('token') ?? '';
@@ -61,6 +83,86 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
 
     user = UserModel.fromJson(userMap);
     await _loadStoreData();
+  }
+
+  void _showChangePasswordDialog() {
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    Get.dialog(
+      AlertDialog(
+        title: const Text("Ubah Password"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: oldPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password Lama'),
+              ),
+              TextField(
+                controller: newPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password Baru'),
+              ),
+              TextField(
+                controller: confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Konfirmasi Password Baru',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text("Batal")),
+          TextButton(
+            onPressed: () async {
+              final oldPass = oldPasswordController.text.trim();
+              final newPass = newPasswordController.text.trim();
+              final confirmPass = confirmPasswordController.text.trim();
+
+              if (oldPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
+                Get.snackbar("Error", "Semua field harus diisi");
+                return;
+              }
+
+              if (newPass != confirmPass) {
+                Get.snackbar("Error", "Konfirmasi password tidak cocok");
+                return;
+              }
+
+              final success = await _authService.changePassword(
+                oldPassword: oldPass,
+                newPassword: newPass,
+                confirmPassword: confirmPass,
+              );
+
+              if (success) {
+                Get.back();
+                Get.snackbar(
+                  "Berhasil",
+                  "Password berhasil diubah",
+                  backgroundColor: Colors.green,
+                  colorText: Colors.white,
+                );
+              } else {
+                Get.snackbar(
+                  "Gagal",
+                  "Password gagal diubah",
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+              }
+            },
+            child: const Text("Simpan"),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadStoreData() async {
@@ -162,7 +264,7 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Hi, ${user.name}',
+            'Hi, ${user!.name}',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 30),
@@ -174,28 +276,116 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildProfileField('Nama', user.name),
-          _buildProfileField('Email', user.email),
-          _buildProfileField('Alamat', user.address),
-          _buildProfileField(
-            'No. Telepon',
-            user.phone.isNotEmpty ? user.phone : '-',
-          ),
+          isEditingUser
+              ? _buildTextField('Nama', nameController)
+              : _buildProfileField('Nama', user!.name),
+
+          isEditingUser
+              ? _buildTextField('Email', emailController)
+              : _buildProfileField('Email', user!.email),
+
+          isEditingUser
+              ? _buildTextField('Alamat', addressController)
+              : _buildProfileField('Alamat', user!.address),
+
+          isEditingUser
+              ? _buildTextField('No. Telepon', phoneController)
+              : _buildProfileField(
+                  'No. Telepon',
+                  user!.phone.isNotEmpty ? user!.phone : '-',
+                ),
+
           const SizedBox(height: 30),
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                if (isEditingUser) {
+                  // Validasi: semua field harus diisi
+                  if (nameController.text.trim().isEmpty ||
+                      emailController.text.trim().isEmpty ||
+                      phoneController.text.trim().isEmpty ||
+                      addressController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('❗ Semua field harus diisi.'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  setState(() => isUserLoading = true);
+
+                  final success = await storeService.updateUserProfile(
+                    name: nameController.text,
+                    email: emailController.text,
+                    phoneNumber: phoneController.text,
+                    address: addressController.text,
+                  );
+
+                  if (success) {
+                    setState(() {
+                      user = user?.copyWith(
+                        name: nameController.text,
+                        email: emailController.text,
+                        phone: phoneController.text,
+                        address: addressController.text,
+                      );
+                      isEditingUser = false;
+                    });
+
+                    final box = GetStorage();
+                    box.write('user', user?.toJson());
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('✅ Profil berhasil diperbarui'),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('❌ Gagal memperbarui profil'),
+                      ),
+                    );
+                  }
+
+                  setState(() => isUserLoading = false);
+                } else {
+                  setState(() => isEditingUser = true);
+                }
+              },
+              icon: isUserLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(isEditingUser ? Icons.save : Icons.edit, size: 16),
+              label: Text(isEditingUser ? 'Simpan' : 'Edit Profil Pengguna'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                elevation: 3,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           ElevatedButton.icon(
-            onPressed: () {
-              Get.toNamed(
-                Routers.editprofileowner,
-                arguments: {'user': user, 'token': token},
-              );
-            },
-            icon: const Icon(Icons.edit, size: 16),
-            label: const Text('Edit Data Pemilik'),
+            onPressed: _showChangePasswordDialog,
+            icon: const Icon(Icons.lock_outline),
+            label: const Text("Ubah Password"),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              elevation: 3,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -218,7 +408,7 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
                       onPressed: () {
                         GetStorage().erase();
                         Navigator.of(context).pop();
-                        Get.offAllNamed(Routers.start);
+                        Get.offAllNamed(Routers.login);
                       },
                       child: const Text(
                         "Logout",
@@ -268,7 +458,7 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
+                    color: Colors.grey.withAlpha(51),
                     blurRadius: 6,
                     offset: const Offset(0, 3),
                   ),
@@ -412,30 +602,9 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
                                         });
 
                                         if (isSuccess) {
+                                          await _loadStoreData(); // Refresh seluruh data dan controller dari API
+
                                           setState(() {
-                                            localStoreList[index] = store.copyWith(
-                                              storeName:
-                                                  nameControllers[index].text,
-                                              address: addressControllers[index]
-                                                  .text,
-                                              contact:
-                                                  phoneControllers[index].text,
-                                              contactName:
-                                                  contactNameControllers[index]
-                                                      .text,
-                                              openAt:
-                                                  openAtControllers[index].text,
-                                              closeAt: closeAtControllers[index]
-                                                  .text,
-                                              lat: double.tryParse(
-                                                latControllers[index].text,
-                                              ),
-                                              long: double.tryParse(
-                                                longControllers[index].text,
-                                              ),
-                                              acceptedVehicleTypes:
-                                                  selectedVehicleTypes[index],
-                                            );
                                             isEditing[index] = false;
                                           });
 

@@ -1,67 +1,53 @@
+import 'package:bengkel/models/booking_model.dart';
 import 'package:flutter/material.dart';
-import 'detail_transaksi_screen.dart';
 
-class RiwayatOwnerScreen extends StatelessWidget {
+import 'package:intl/intl.dart';
+
+class RiwayatOwnerScreen extends StatefulWidget {
   const RiwayatOwnerScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> dummyTransactions = [
-      {
-        "id": "1",
-        "jenisKendaraan": "Motor",
-        "status": "Diterima",
-        "tanggal": "21 Juni 2025",
-        "jam": "09:00",
-        "noPol": "BA 1234 CD",
-        "layanan": "Servis Ringan",
-        "dp": 10000,
-        "totalHarga": 50000,
-        "rekening": "1234567890 - BCA",
-      },
-      {
-        "id": "2",
-        "jenisKendaraan": "Mobil",
-        "status": "Menunggu",
-        "tanggal": "20 Juni 2025",
-        "jam": "13:30",
-        "noPol": "BA 5678 EF",
-        "layanan": "Ganti Oli",
-        "dp": 20000,
-        "totalHarga": 120000,
-        "rekening": "0987654321 - Mandiri",
-      },
-      {
-        "id": "3",
-        "jenisKendaraan": "Motor",
-        "status": "Ditolak",
-        "tanggal": "18 Juni 2025",
-        "jam": "11:00",
-        "noPol": "BA 9999 ZZ",
-        "layanan": "Cuci Steam",
-        "dp": 0,
-        "totalHarga": 0,
-        "rekening": "Belum tersedia",
-      },
-    ];
+  State<RiwayatOwnerScreen> createState() => _RiwayatOwnerScreenState();
+}
 
-    Icon getStatusIcon(String status) {
-      switch (status.toLowerCase()) {
-        case 'diterima':
-          return const Icon(Icons.check_circle, color: Colors.green, size: 20);
-        case 'ditolak':
-          return const Icon(Icons.cancel, color: Colors.red, size: 20);
-        case 'menunggu':
-          return const Icon(Icons.access_time, color: Colors.orange, size: 20);
-        default:
-          return const Icon(Icons.help, color: Colors.grey, size: 20);
-      }
+class _RiwayatOwnerScreenState extends State<RiwayatOwnerScreen> {
+  List<BookingModel> transactions = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  Icon getStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+        return const Icon(Icons.check_circle, color: Colors.green, size: 20);
+      case 'cancelled':
+        return const Icon(Icons.cancel, color: Colors.red, size: 20);
+      case 'pending':
+        return const Icon(Icons.access_time, color: Colors.orange, size: 20);
+      default:
+        return const Icon(Icons.help, color: Colors.grey, size: 20);
     }
+  }
 
+  String formatDate(String? dateStr) {
+    if (dateStr == null) return '-';
+    try {
+      final date = DateTime.parse(dateStr);
+      return DateFormat('d MMMM yyyy, HH:mm', 'id_ID').format(date);
+    } catch (e) {
+      return '-';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "Riwayat Transaksi",
+          "Riwayat Booking",
           style: TextStyle(
             fontFamily: 'Poppins',
             fontWeight: FontWeight.bold,
@@ -73,28 +59,26 @@ class RiwayatOwnerScreen extends StatelessWidget {
         elevation: 0,
       ),
       backgroundColor: Colors.grey[100],
-      body: dummyTransactions.isEmpty
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : transactions.isEmpty
           ? Center(
               child: Text(
-                'Belum ada riwayat transaksi.',
+                'Belum ada riwayat Booking.',
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: dummyTransactions.length,
+              itemCount: transactions.length,
               itemBuilder: (context, index) {
-                final item = dummyTransactions[index];
-
+                final item = transactions[index];
                 return GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            DetailTransaksiScreen(transaction: item),
-                      ),
-                    );
+                    // Get.toNamed(
+                    //   detailBookingowner,
+                    //   arguments: item,
+                    // );
                   },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -104,7 +88,7 @@ class RiwayatOwnerScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.grey.withAlpha(51),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
@@ -114,7 +98,7 @@ class RiwayatOwnerScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item['jenisKendaraan'],
+                          item.vehicleType,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -124,17 +108,17 @@ class RiwayatOwnerScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            getStatusIcon(item['status']),
+                            getStatusIcon(item.status),
                             const SizedBox(width: 6),
                             Text(
-                              'Status: ${item['status']}',
+                              'Status: ${item.status}',
                               style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Tanggal: ${item['tanggal']}',
+                          'Tanggal: ${formatDate(item.bookingTime)}',
                           style: const TextStyle(fontSize: 14),
                         ),
                         const SizedBox(height: 8),
@@ -147,7 +131,7 @@ class RiwayatOwnerScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Total: Rp${item['totalHarga']}',
+                              'Total: Rp${item.totalPrice.toStringAsFixed(0)}',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,

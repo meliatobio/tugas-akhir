@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:bengkel/constants/api_base.dart';
 import 'package:bengkel/models/bengkel_model.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -38,7 +39,7 @@ class AuthOwnerService {
         return null;
       }
     } catch (e) {
-      print('❌ Error getOwnedStore: $e');
+      debugPrint('❌ Error getOwnedStore: $e');
       return null;
     }
   }
@@ -82,7 +83,7 @@ class AuthOwnerService {
             filename: image.path.split('/').last,
           ),
       });
-      print('SEND: $acceptedVehicleTypes'); // harus tampil [mobil, motor]
+      debugPrint('SEND: $acceptedVehicleTypes'); // harus tampil [mobil, motor]
 
       final response = await dio.patch(
         'store/update/$storeId',
@@ -96,15 +97,15 @@ class AuthOwnerService {
       );
 
       if (response.statusCode == 200) {
-        print("✅ Profil store berhasil diperbarui");
+        debugPrint("✅ Profil store berhasil diperbarui");
         return true;
       } else {
-        print("❌ Gagal update profil store: \${response.statusCode}");
-        print("📥 Respon: \${response.data}");
+        debugPrint("❌ Gagal update profil store: \${response.statusCode}");
+        debugPrint("📥 Respon: \${response.data}");
         return false;
       }
     } catch (e) {
-      print('❌ Exception updateDataBengkel: $e');
+      debugPrint('❌ Exception updateDataBengkel: $e');
       return false;
     }
   }
@@ -137,7 +138,7 @@ class AuthOwnerService {
       );
 
       if (response.statusCode == 200) {
-        print('✅ Update profil user berhasil');
+        debugPrint('✅ Update profil user berhasil');
 
         final updatedUser = response.data['user'];
         if (updatedUser != null) {
@@ -147,7 +148,7 @@ class AuthOwnerService {
         return true;
       }
     } catch (e) {
-      print('❌ Gagal update profil user: $e');
+      debugPrint('❌ Gagal update profil user: $e');
     }
 
     // ✅ Tambahkan ini untuk menghindari error return type
@@ -184,13 +185,13 @@ class AuthOwnerService {
 
       final ownerRegistered = await registerOwnerAccount(ownerData);
       if (!ownerRegistered) {
-        print('❌ Gagal register akun owner');
+        debugPrint('❌ Gagal register akun owner');
         return false;
       }
 
       final loginResult = await loginOwner(email, password);
       if (loginResult == null) {
-        print('❌ Gagal login setelah register');
+        debugPrint('❌ Gagal login setelah register');
         return false;
       }
 
@@ -209,14 +210,28 @@ class AuthOwnerService {
         'close_at': closeAt,
         'accepted_vehicle_types': acceptedVehicleTypes,
       };
+      // Tambahkan validasi ini sebelum melanjutkan
+      if (acceptedVehicleTypes.isEmpty) {
+        debugPrint('⚠️ acceptedVehicleTypes kosong, isi minimal satu!');
+        return false;
+      }
 
       final pickedImage = XFile(image.path);
+
+      // ✅ Tambahkan log di sini:
+      debugPrint('🔗 URL: ${ApiBase.baseUrl}store/register');
+      debugPrint('📦 Data yang dikirim ke store/register:');
+      storeData.forEach((key, value) {
+        debugPrint('   $key: $value');
+      });
+      debugPrint('🖼️ Gambar yang diupload: ${image.path}');
+      debugPrint('🔐 Token Authorization: $token');
 
       final storeSuccess = await registerStore(storeData, token, pickedImage);
 
       return storeSuccess;
     } catch (e) {
-      print("❌ Register owner error: $e");
+      debugPrint("❌ Register owner error: $e");
       return false;
     }
   }
@@ -224,14 +239,17 @@ class AuthOwnerService {
   /// 🔐 Register akun user (role: store)
   Future<bool> registerOwnerAccount(Map<String, dynamic> userData) async {
     try {
+      debugPrint('🔗 URL: ${ApiBase.baseUrl}auth/register');
+      debugPrint('📦 Data: $userData');
+
       final response = await dio.post('/auth/register', data: userData);
       return response.statusCode == 201;
     } on DioException catch (e) {
-      print('❌ Register error: ${e.message}');
-      print('📥 Response: ${e.response?.data}');
+      debugPrint('❌ Register error: ${e.message}');
+      debugPrint('📥 Response: ${e.response?.data}');
       return false;
     } catch (e) {
-      print('❌ Exception saat register user: $e');
+      debugPrint('❌ Exception saat register user: $e');
       return false;
     }
   }
@@ -254,7 +272,7 @@ class AuthOwnerService {
         return null;
       }
     } catch (e) {
-      print('❌ Error loginOwner: $e');
+      debugPrint('❌ Error loginOwner: $e');
       return null;
     }
   }
@@ -268,9 +286,30 @@ class AuthOwnerService {
     try {
       final formData = FormData();
 
+      // Ganti titik dengan titik dua untuk jam
+      storeData['open_at'] = storeData['open_at'].replaceAll(
+        '.',
+        ':',
+      ); // ex: 09.00 => 09:00
+      storeData['close_at'] = storeData['close_at'].replaceAll(
+        '.',
+        ':',
+      ); // ex: 21.00 => 21:00
+
+      // debugPrint debug data
+      debugPrint('🕒 open_at: ${storeData['open_at']}');
+      debugPrint('🕒 close_at: ${storeData['close_at']}');
+      debugPrint(
+        '🚗 accepted_vehicle_types: ${storeData['accepted_vehicle_types']}',
+      );
+
+      // Loop semua key di storeData
       storeData.forEach((key, value) {
-        if (key == 'accepted_vehicle_types' && value is List<String>) {
+        if (key == 'accepted_vehicle_types' &&
+            value != null &&
+            value is List<String>) {
           for (var type in value) {
+            debugPrint('➡️ Tambah accepted_vehicle_types: $type');
             formData.fields.add(MapEntry('accepted_vehicle_types[]', type));
           }
         } else {
@@ -278,6 +317,7 @@ class AuthOwnerService {
         }
       });
 
+      // Tambah file gambar
       formData.files.add(
         MapEntry(
           'image',
@@ -288,6 +328,9 @@ class AuthOwnerService {
         ),
       );
 
+      debugPrint('✅ Final storeData yang dikirim ke API: ${formData.fields}');
+
+      // Kirim ke backend
       final response = await dio.post(
         '/store/register',
         data: formData,
@@ -301,11 +344,11 @@ class AuthOwnerService {
 
       return response.statusCode == 201;
     } on DioException catch (e) {
-      print('❌ Register store error: ${e.message}');
-      print('📥 Response: ${e.response?.data}');
+      debugPrint('❌ Register store error: ${e.message}');
+      debugPrint('📥 Response error data: ${e.response?.data}');
       return false;
     } catch (e) {
-      print('❌ Unknown error saat register store: $e');
+      debugPrint('❌ Unknown error saat register store: $e');
       return false;
     }
   }

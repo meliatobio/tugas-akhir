@@ -34,10 +34,6 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
     );
 
     try {
-      print('📡 FETCH STORES');
-      print('📡 URL: $url');
-      print('📡 TOKEN: $token');
-
       final response = await http.get(
         url,
         headers: {
@@ -46,27 +42,18 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
         },
       );
 
-      print('📡 Status Code: ${response.statusCode}');
-      print('📡 Response Body: ${response.body}');
-
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
         final List<dynamic> data = body['data'];
 
-        try {
-          setState(() {
-            stores = data.map((e) => StoreModel.fromJson(e)).toList();
-            isLoading = false;
-          });
-        } catch (e) {
-          print('❌ Parsing Error: $e');
-          setState(() => isLoading = false);
-        }
+        setState(() {
+          stores = data.map((e) => StoreModel.fromJson(e)).toList();
+          isLoading = false;
+        });
       } else {
         throw Exception('Gagal mengambil data store');
       }
     } catch (e) {
-      print('❌ Error: $e');
       if (!mounted) return;
       setState(() => isLoading = false);
     }
@@ -87,7 +74,7 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
             onPressed: () {
               box.erase();
               Navigator.of(context).pop();
-              Get.offAllNamed(Routers.start);
+              Get.offAllNamed(Routers.login);
             },
             child: const Text("Logout", style: TextStyle(color: Colors.red)),
           ),
@@ -101,18 +88,22 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
+        backgroundColor: Colors.amber,
+        elevation: 0,
         centerTitle: false,
         title: Row(
           children: [
-            const CircleAvatar(backgroundColor: Colors.amber, radius: 12),
+            const CircleAvatar(
+              backgroundColor: Color.fromARGB(255, 255, 255, 255),
+              radius: 14,
+            ),
             const SizedBox(width: 8),
             const Text(
               'OntoCare',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.bold,
+                fontSize: 18,
                 color: Colors.black,
               ),
             ),
@@ -131,78 +122,130 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
+              // 🔍 Search, Banner, Emergency
               Container(
-                color: Colors.amber,
+                decoration: BoxDecoration(
+                  color: Colors.amber,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1), // warna shadow
+                      blurRadius: 8, // seberapa lembut shadow
+                      offset: const Offset(0, 4), // arah jatuh shadow
+                    ),
+                  ],
+                ),
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: GestureDetector(
-                        onTap: () {
-                          Get.toNamed(Routers.searchbengkel);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: const [
-                              Icon(Icons.search, color: Colors.grey),
-                              SizedBox(width: 8),
-                              Text(
-                                "Cari Bengkel...",
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/images/banner.png',
-                        height: 180,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () => Get.toNamed(Routers.emergency),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                    // Search bar
+                    GestureDetector(
+                      onTap: () {
+                        Get.toNamed(Routers.searchbengkel);
+                      },
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                          horizontal: 12,
+                          vertical: 10, // 🔹 lebih tipis dari 14
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      icon: const Icon(Icons.call, color: Colors.white),
-                      label: const Text(
-                        'Emergency Call',
-                        style: TextStyle(
+                        decoration: BoxDecoration(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                "Cari Bengkel...",
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  fontFamily: 'Poppins',
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.search_rounded,
+                              color: Colors.grey.shade500,
+                              size: 20,
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+              // Banner
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/images/banner.png',
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Emergency Button
+              Center(
+                child: SizedBox(
+                  width: 220, // biar nggak terlalu lebar
+                  child: ElevatedButton.icon(
+                    onPressed: () => Get.toNamed(Routers.emergency),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      elevation: 5,
+                      shadowColor: Colors.red.withOpacity(0.4),
+                    ),
+                    icon: const Icon(Icons.call, color: Colors.white),
+                    label: const Text(
+                      'Emergency Call',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // 📍 Bengkel Terdekat
+              const SizedBox(height: 10),
               Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
@@ -216,6 +259,7 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title + arrow
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -251,6 +295,8 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
+
+                    // List bengkel
                     isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : stores.isEmpty
@@ -261,15 +307,11 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: GestureDetector(
                                   onTap: () {
-                                    print(
-                                      '🟢 Store ID yang dikirim: ${store.id}',
-                                    );
                                     Get.toNamed(
                                       Routers.detailbengkel,
                                       arguments: store.id,
                                     );
                                   },
-
                                   child: _buildBengkelCard(store),
                                 ),
                               );
@@ -285,13 +327,18 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
     );
   }
 
+  // 🏪 Card Bengkel
   Widget _buildBengkelCard(StoreModel store) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.white,
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Row(
@@ -303,6 +350,8 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
             ),
             child: Image.asset(
               'assets/images/banner.png',
+              // Kalau API sudah ada gambar, ganti ke:
+              // Image.network('${ApiBase.baseUrl}${store.image}', ...
               width: 100,
               height: 80,
               fit: BoxFit.cover,
@@ -317,14 +366,20 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
                 children: [
                   Text(
                     store.storeName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       const Icon(Icons.star, size: 16, color: Colors.amber),
                       const SizedBox(width: 4),
-                      Text("${store.rating?.toStringAsFixed(1) ?? '0.0'}/5"),
+                      Text(
+                        "${store.rating?.toStringAsFixed(1) ?? '0.0'}/5",
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -340,6 +395,8 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
                         child: Text(
                           store.address ?? 'Alamat tidak tersedia',
                           style: const TextStyle(fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
@@ -352,11 +409,96 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
             padding: const EdgeInsets.only(right: 12),
             child: Text(
               '1 KM',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
         ],
       ),
     );
   }
+
+  // Widget _buildCustomAppBar(BuildContext context) {
+  //   return Container(
+  //     width: double.infinity,
+  //     decoration: const BoxDecoration(
+  //       color: Colors.amber,
+  //       borderRadius: BorderRadius.only(
+  //         bottomLeft: Radius.circular(20),
+  //         bottomRight: Radius.circular(20),
+  //       ),
+  //     ),
+  //     padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+  //     child: SafeArea(
+  //       bottom: false,
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           // Baris atas: Logo + Logout
+  //           Row(
+  //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //             children: [
+  //               Row(
+  //                 children: const [
+  //                   CircleAvatar(
+  //                     backgroundColor: Colors.white,
+  //                     radius: 14,
+  //                     child: Icon(Icons.build, color: Colors.amber),
+  //                   ),
+  //                   SizedBox(width: 8),
+  //                   Text(
+  //                     'OntoCare',
+  //                     style: TextStyle(
+  //                       fontFamily: 'Poppins',
+  //                       fontWeight: FontWeight.bold,
+  //                       fontSize: 18,
+  //                       color: Colors.white,
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //               IconButton(
+  //                 icon: const Icon(Icons.logout, color: Colors.white),
+  //                 onPressed: () => _showLogoutConfirmation(context),
+  //               ),
+  //             ],
+  //           ),
+  //           const SizedBox(height: 16),
+  //           // Search Bar
+  //           GestureDetector(
+  //             onTap: () {
+  //               Get.toNamed(Routers.searchbengkel);
+  //             },
+  //             child: Container(
+  //               padding: const EdgeInsets.symmetric(
+  //                 horizontal: 12,
+  //                 vertical: 14,
+  //               ),
+  //               decoration: BoxDecoration(
+  //                 color: Colors.white,
+  //                 borderRadius: BorderRadius.circular(12),
+  //                 boxShadow: [
+  //                   BoxShadow(
+  //                     color: Colors.black.withOpacity(0.05),
+  //                     blurRadius: 4,
+  //                     offset: const Offset(0, 2),
+  //                   ),
+  //                 ],
+  //               ),
+  //               child: Row(
+  //                 children: const [
+  //                   Icon(Icons.search, color: Colors.grey),
+  //                   SizedBox(width: 8),
+  //                   Text(
+  //                     "Cari Bengkel...",
+  //                     style: TextStyle(color: Colors.grey, fontSize: 14),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }

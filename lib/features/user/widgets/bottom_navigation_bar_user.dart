@@ -13,6 +13,7 @@ class BottomNavigationBarWidgetUser extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
+      backgroundColor: Colors.white, // Putih full sampai bawah
       currentIndex: selectedIndex,
       onTap: onTap,
       type: BottomNavigationBarType.fixed,

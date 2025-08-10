@@ -1,200 +1,79 @@
-import 'dart:io';
+import 'package:bengkel/models/booking_model.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
-class DetailTransaksiScreen extends StatefulWidget {
-  final Map<String, dynamic> transaction;
+class DetailTransaksiScreen extends StatelessWidget {
+  DetailTransaksiScreen({super.key});
 
-  const DetailTransaksiScreen({super.key, required this.transaction});
+  final BookingModel tx = Get.arguments as BookingModel;
 
-  @override
-  State<DetailTransaksiScreen> createState() => _DetailTransaksiScreenState();
-}
-
-class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
-  String? _selectedImagePath;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSavedImage();
-  }
-
-  Future<void> _loadSavedImage() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _selectedImagePath = prefs.getString(
-        'uploadedImagePath_${widget.transaction['id']}',
-      );
-    });
-  }
-
-  Future<void> _saveImagePath(String filePath) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'uploadedImagePath_${widget.transaction['id']}',
-      filePath,
-    );
-  }
-
-  Widget _buildDetailItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<String?> _pickFile() async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles();
-      if (result != null && result.files.isNotEmpty) {
-        return result.files.single.path;
-      }
-    } catch (e) {
-      debugPrint("Error picking file: $e");
-    }
-    return null;
-  }
-
-  Widget _buildUploadSection() {
-    final String status = widget.transaction['status'].toLowerCase();
-
-    if (status == 'ditolak') {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.redAccent),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text(
-          'Transaksi ditolak. Upload tidak diperbolehkan.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.red),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          if (_selectedImagePath == null)
-            GestureDetector(
-              onTap: () async {
-                final filePath = await _pickFile();
-                if (filePath != null) {
-                  bool? confirm = await showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('Konfirmasi Upload'),
-                      content: const Text('Yakin upload gambar ini?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Batal'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Ya'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirm == true) {
-                    setState(() {
-                      _selectedImagePath = filePath;
-                    });
-                    await _saveImagePath(filePath);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Upload berhasil disimpan lokal'),
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-              child: const Icon(
-                Icons.photo_camera,
-                size: 40,
-                color: Colors.grey,
-              ),
-            ),
-          if (_selectedImagePath != null)
-            Image.file(
-              File(_selectedImagePath!),
-              height: 200,
-              width: 200,
-              fit: BoxFit.cover,
-            ),
-        ],
-      ),
-    );
+  String formatCurrency(double amount) {
+    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp');
+    return formatter.format(amount);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tx = widget.transaction;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Detail Transaksi',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-
-        iconTheme: const IconThemeData(color: Color.fromARGB(255, 0, 0, 0)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: const Text("Detail Transaksi")),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
           children: [
-            _buildDetailItem("Status", tx['status']),
-            _buildDetailItem("Jenis Kendaraan", tx['jenisKendaraan']),
-            _buildDetailItem("Tanggal", tx['tanggal']),
-            _buildDetailItem("Jam", tx['jam'] ?? '-'),
-            _buildDetailItem("No Polisi", tx['noPol'] ?? '-'),
-            _buildDetailItem("Layanan", tx['layanan'] ?? '-'),
-            _buildDetailItem("DP", "Rp${tx['dp'] ?? 0}"),
-            _buildDetailItem("Total Harga", "Rp${tx['totalHarga']}"),
-            const SizedBox(height: 10),
+            _buildDetailItem("Status", tx.status),
+            _buildDetailItem("Jenis Kendaraan", tx.vehicleType),
+            _buildDetailItem("Tanggal", tx.bookingDate),
+            _buildDetailItem("Jam", tx.bookingTime),
+            _buildDetailItem("No Polisi", tx.licensePlate),
+            _buildDetailItem("Layanan", tx.serviceName),
+            _buildDetailItem("DP", formatCurrency(tx.dpAmount.toDouble())),
+            _buildDetailItem("Total Harga", formatCurrency(tx.totalPrice)),
             const Divider(),
-            _buildDetailItem("Rekening", tx['rekening'] ?? 'Belum tersedia'),
+            _buildDetailItem("Rekening", tx.bankAccount),
             const SizedBox(height: 20),
             _buildUploadSection(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              "$label:",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(flex: 5, child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Upload Bukti Pembayaran",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton(
+          onPressed: () {
+            // TODO: fungsi upload
+          },
+          child: const Text("Pilih Gambar"),
+        ),
+      ],
     );
   }
 }

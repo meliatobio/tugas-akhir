@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'OntoCare',
-      initialRoute: Routers.start,
+      initialRoute: Routers.login,
       getPages: Routers.routes, // ⬅️ WAJIB ADA INI
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Poppins'),
     );

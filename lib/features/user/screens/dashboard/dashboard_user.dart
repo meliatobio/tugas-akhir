@@ -44,10 +44,14 @@ class _DashboardUserScreenState extends State<DashboardUserScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: false, // Pastikan background BottomNavigationBar menutup full
       body: IndexedStack(index: _selectedIndex, children: _pages),
-      bottomNavigationBar: BottomNavigationBarWidgetUser(
-        selectedIndex: _selectedIndex,
-        onTap: _onTap,
+      bottomNavigationBar: SafeArea(
+        top: false, // Hanya melindungi sisi bawah
+        child: BottomNavigationBarWidgetUser(
+          selectedIndex: _selectedIndex,
+          onTap: _onTap,
+        ),
       ),
     );
   }

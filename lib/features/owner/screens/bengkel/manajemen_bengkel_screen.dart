@@ -1,6 +1,8 @@
+import 'package:bengkel/features/owner/services/store_service.dart';
 import 'package:bengkel/models/bengkel_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 
 class ManajemenBengkelScreen extends StatefulWidget {
   final StoreModel store;
@@ -12,25 +14,30 @@ class ManajemenBengkelScreen extends StatefulWidget {
 }
 
 class _ManajemenBengkelScreenState extends State<ManajemenBengkelScreen> {
-  bool isEmergencyOn = true;
+  late StoreModel store; // ✅ mutable store
+  bool isEmergencyOn = false;
+  final box = GetStorage();
+  final StoreService storeService = StoreService();
+
+  @override
+  void initState() {
+    super.initState();
+    store = widget.store; // ✅ simpan salinan awal
+    isEmergencyOn = store.emergencyCall;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final store = widget.store;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manajemen Bengkel'),
         leading: IconButton(
-          onPressed: () {
-            Get.back();
-          },
+          onPressed: () => Get.back(),
           icon: const Icon(Icons.arrow_back),
           color: Colors.black,
-          iconSize: 24, // kecilkan ukuran
+          iconSize: 24,
         ),
       ),
-
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -111,7 +118,7 @@ class _ManajemenBengkelScreenState extends State<ManajemenBengkelScreen> {
                       children: [
                         ElevatedButton.icon(
                           onPressed: () {
-                            // TODO: Emergency logic
+                            // Aksi darurat tambahan
                           },
                           icon: const Icon(Icons.call, color: Colors.white),
                           label: const Text('Emergency Call'),
@@ -120,11 +127,25 @@ class _ManajemenBengkelScreenState extends State<ManajemenBengkelScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Text("ON"),
+                        Text(isEmergencyOn ? "ON" : "OFF"),
                         Switch(
                           value: isEmergencyOn,
-                          onChanged: (value) {
+                          onChanged: (value) async {
                             setState(() => isEmergencyOn = value);
+
+                            final success = await storeService
+                                .toggleEmergencyCallService(
+                                  storeId: store.id,
+                                  newValue: value,
+                                );
+
+                            if (success) {
+                              setState(() {
+                                store = store.copyWith(emergencyCall: value);
+                              });
+                            } else {
+                              setState(() => isEmergencyOn = !value);
+                            }
                           },
                         ),
                       ],
@@ -150,7 +171,7 @@ class _ManajemenBengkelScreenState extends State<ManajemenBengkelScreen> {
                           ),
                     TextButton.icon(
                       onPressed: () {
-                        // TODO: Tambah layanan
+                        // Tambah layanan
                       },
                       icon: const Icon(Icons.add_circle, color: Colors.green),
                       label: const Text('Tambah Layanan'),
@@ -178,14 +199,34 @@ class _ManajemenBengkelScreenState extends State<ManajemenBengkelScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        children: List.generate(
-                                          review.rating,
-                                          (index) => const Icon(
-                                            Icons.star,
-                                            size: 16,
-                                            color: Colors.amber,
-                                          ),
-                                        ),
+                                        children: List.generate(5, (index) {
+                                          final fullStars = review.rating
+                                              .floor();
+                                          final hasHalfStar =
+                                              (review.rating - fullStars) >=
+                                              0.5;
+
+                                          if (index < fullStars) {
+                                            return const Icon(
+                                              Icons.star,
+                                              size: 16,
+                                              color: Colors.amber,
+                                            );
+                                          } else if (index == fullStars &&
+                                              hasHalfStar) {
+                                            return const Icon(
+                                              Icons.star_half,
+                                              size: 16,
+                                              color: Colors.amber,
+                                            );
+                                          } else {
+                                            return const Icon(
+                                              Icons.star_border,
+                                              size: 16,
+                                              color: Colors.grey,
+                                            );
+                                          }
+                                        }),
                                       ),
                                       const SizedBox(height: 4),
                                       Text('"${review.comment}"'),
@@ -193,7 +234,7 @@ class _ManajemenBengkelScreenState extends State<ManajemenBengkelScreen> {
                                   ),
                                   trailing: ElevatedButton(
                                     onPressed: () {
-                                      // TODO: Aksi balas ulasan
+                                      // Aksi balas ulasan
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.amber,

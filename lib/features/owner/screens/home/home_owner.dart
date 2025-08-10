@@ -1,3 +1,4 @@
+import 'package:bengkel/app/routers.dart';
 import 'package:bengkel/features/owner/services/store_service.dart';
 import 'package:bengkel/models/user_model.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,7 @@ class _HomeOwnerScreenState extends State<HomeOwnerScreen> {
   @override
   void initState() {
     super.initState();
+
     fetchOwnerStores();
   }
 
@@ -32,18 +34,18 @@ class _HomeOwnerScreenState extends State<HomeOwnerScreen> {
 
     if (role == 'store' && userData != null) {
       final user = UserModel.fromJson(userData);
-      print("✅ User dari storage: ${user.name}");
+      debugPrint("✅ User dari storage: ${user.name}");
       // Bisa lanjut ambil detail store pakai user.id
       fetchStore(user.id);
     } else {
-      print("❌ Token kosong atau role bukan owner.");
+      debugPrint("❌ Token kosong atau role bukan owner.");
     }
   }
 
   void fetchStore(int userId) async {
     // contoh pakai StoreService
     final fetchedStore = await StoreService().fetchStoreDetail();
-    print('📦 Data dari fetchStoreDetail: $fetchedStore');
+    debugPrint('📦 Data dari fetchStoreDetail: $fetchedStore');
     setState(() {
       store = fetchedStore;
       isLoading = false;
@@ -55,7 +57,7 @@ class _HomeOwnerScreenState extends State<HomeOwnerScreen> {
     final token = box.read('token');
 
     if (token == null || role != 'store') {
-      print('❌ Token kosong atau role bukan owner.');
+      debugPrint('❌ Token kosong atau role bukan owner.');
       setState(() => isLoading = false);
       return;
     }
@@ -63,13 +65,13 @@ class _HomeOwnerScreenState extends State<HomeOwnerScreen> {
     try {
       final fetchedStores = await StoreService()
           .fetchStores(); // GANTI METHOD INI
-      print('📦 Data stores: $fetchedStores');
+      debugPrint('📦 Data stores: $fetchedStores');
       setState(() {
         stores = fetchedStores;
         isLoading = false;
       });
     } catch (e) {
-      print('❌ Gagal mengambil data: $e');
+      debugPrint('❌ Gagal mengambil data: $e');
       setState(() => isLoading = false);
     }
   }
@@ -100,6 +102,7 @@ class _HomeOwnerScreenState extends State<HomeOwnerScreen> {
         itemBuilder: (context, index) {
           final store = stores[index];
           final isActive = store.isActive; // Sesuaikan field status
+
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(12),
@@ -114,23 +117,33 @@ class _HomeOwnerScreenState extends State<HomeOwnerScreen> {
                 ),
               ],
             ),
+
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    store.photo ?? '', // Ganti dengan URL foto
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Image.asset(
-                      'assets/images/logo.png',
-                      width: 80,
-                      height: 80,
-                    ),
-                  ),
+                  child:
+                      (store.photo != null &&
+                          !store.photo!.contains("via.placeholder.com"))
+                      ? Image.network(
+                          store.photo!,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Image.asset(
+                            'assets/images/logo.png',
+                            width: 80,
+                            height: 80,
+                          ),
+                        )
+                      : Image.asset(
+                          'assets/images/logo.png',
+                          width: 80,
+                          height: 80,
+                        ),
                 ),
+
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -201,6 +214,29 @@ class _HomeOwnerScreenState extends State<HomeOwnerScreen> {
             ),
           );
         },
+      ),
+      // ✅ Tambah tombol di bawah layar
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(12),
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              final result = await Get.toNamed(Routers.tambahbengkel);
+              if (result == 'refresh') {
+                fetchOwnerStores(); // refresh list
+              }
+            },
+
+            icon: const Icon(Icons.add),
+            label: const Text('Tambah Bengkel'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
       ),
     );
   }

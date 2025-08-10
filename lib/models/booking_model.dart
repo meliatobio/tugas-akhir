@@ -1,7 +1,5 @@
-// lib/features/booking/models/booking_model.dart
-
 class BookingModel {
-  final String id;
+  final int id;
   final String status;
   final String bookingDate;
   final String bookingTime;
@@ -9,7 +7,7 @@ class BookingModel {
   final String licensePlate;
   final String serviceName;
   final int dpAmount;
-  final int totalPrice;
+  final double totalPrice;
   final String bankAccount;
 
   BookingModel({
@@ -26,18 +24,26 @@ class BookingModel {
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
+    final String fullTime = json['booking_time'] ?? '';
+    final split = fullTime.split('T');
+    final date = split.isNotEmpty ? split.first : '';
+    final time = split.length > 1 ? split.last.substring(0, 5) : '';
+
     return BookingModel(
-      id: json['id'].toString(),
+      id: json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id'].toString()) ?? 0,
       status: json['status'] ?? 'Menunggu',
-      bookingDate: json['booking_time']?.split('T')?.first ?? '',
-      bookingTime:
-          json['booking_time']?.split('T')?.last?.substring(0, 5) ?? '',
-      vehicleType: json['vehicle_type'] ?? 'Motor',
+      bookingDate: date,
+      bookingTime: time,
+      vehicleType: json['vehicle_type'] ?? '-',
       licensePlate: json['license_plate'] ?? '-',
       serviceName: json['service_name'] ?? '-',
-      dpAmount: (json['dp_amount'] ?? 0) as int,
-      totalPrice: (json['total_price'] ?? 0) as int,
-      bankAccount: json['bank_account'] ?? 'Belum tersedia',
+      dpAmount: json['dp_amount'] ?? 0,
+      totalPrice: (json['total_price'] != null)
+          ? double.tryParse(json['total_price'].toString()) ?? 0.0
+          : 0.0,
+      bankAccount: json['bank_account'] ?? '-',
     );
   }
 

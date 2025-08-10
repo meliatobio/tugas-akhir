@@ -97,7 +97,7 @@ class _InputBookingScreenState extends State<InputBookingScreen> {
       );
 
       final responseData = jsonDecode(response.body);
-      print('📦 Response: $responseData');
+      debugPrint('📦 Response: $responseData');
 
       if (response.statusCode == 201) {
         Get.snackbar("Berhasil", "Booking berhasil dilakukan.");

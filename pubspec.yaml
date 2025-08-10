@@ -44,7 +44,10 @@ dependencies:
   get_storage: ^2.1.1
   cross_file: ^0.3.4+2
   http: ^1.4.0
-
+  logger: ^2.0.2
+  jwt_decoder: ^2.0.1
+  flutter_secure_storage: ^9.2.4
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

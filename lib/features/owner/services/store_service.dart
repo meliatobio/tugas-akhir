@@ -1,8 +1,15 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+
 import 'package:bengkel/constants/api_base.dart';
 import 'package:bengkel/models/bengkel_model.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart' hide MultipartFile;
 import 'package:get_storage/get_storage.dart';
+
+final Dio _dio = Dio();
+// import 'dart:convert';
+// import 'package:http/http.dart' as http;
 
 class StoreService {
   final Dio dio = Dio(BaseOptions(baseUrl: ApiBase.baseUrl));
@@ -13,11 +20,15 @@ class StoreService {
     try {
       final role = box.read('role');
       if (role != "store") {
-        print("🚫 Role bukan store, tidak bisa fetch data store.");
+        debugPrint("🚫 Role bukan store, tidak bisa fetch data store.");
         return null;
       }
 
       final token = box.read('token');
+
+      // ✅ Tambahkan log pemanggilan API di sini
+      debugPrint('🔗 Memanggil: GET owned/store');
+
       final response = await dio.get(
         'owned/store',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
@@ -27,22 +38,21 @@ class StoreService {
         final dataList = response.data['data'];
 
         if (dataList == null || dataList.isEmpty) {
-          print('⚠️ Data bengkel kosong!');
+          debugPrint('⚠️ Data bengkel kosong!');
           return null;
         }
 
         final store = StoreModel.fromJson(dataList[0]);
         box.write('store_id', store.id);
-        print('✅ Store ID disimpan: ${store.id}');
-
-        print('✅ Store name: ${store.storeName}');
+        debugPrint('✅ Store ID disimpan: ${store.id}');
+        debugPrint('✅ Store name: ${store.storeName}');
         return store;
       } else {
-        print('❌ Gagal fetch data bengkel: ${response.statusCode}');
+        debugPrint('❌ Gagal fetch data bengkel: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('❌ Error fetchStoreDetail: $e');
+      debugPrint('❌ Error fetchStoreDetail: $e');
       return null;
     }
   }
@@ -58,7 +68,7 @@ class StoreService {
       final token = box.read('token');
 
       final response = await dio.patch(
-        'profile/update',
+        '${ApiBase.baseUrl}profile/update',
         data: {
           'name': name,
           'email': email,
@@ -70,7 +80,7 @@ class StoreService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('❌ Gagal update profil user: $e');
+      debugPrint('❌ Gagal update profil user: $e');
       return false;
     }
   }
@@ -79,24 +89,41 @@ class StoreService {
   Future<bool> changePassword({
     required String oldPassword,
     required String newPassword,
-    required String newPasswordConfirmation,
+    required String confirmPassword,
   }) async {
-    try {
-      final token = box.read('token');
+    // 🔍 Ambil data user dari storage
+    final user = box.read('user');
+    debugPrint('📦 Data user dari storage: $user');
 
-      final response = await dio.patch(
-        'profile/password',
+    final email = user?['email'];
+    debugPrint('📧 Email yang digunakan: $email');
+
+    // ❗ Validasi apakah email tersedia
+    if (email == null || email.isEmpty) {
+      debugPrint('❌ Email tidak ditemukan di storage');
+      return false;
+    }
+
+    try {
+      final response = await dio.post(
+        'auth/reset-password',
         data: {
+          'email': email, // ✅ Kirim email ke backend
           'old_password': oldPassword,
           'new_password': newPassword,
-          'new_password_confirmation': newPasswordConfirmation,
+          'new_password_confirmation': confirmPassword,
         },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
+      debugPrint('✅ Change password response: ${response.data}');
       return response.statusCode == 200;
+    } on DioException catch (e) {
+      debugPrint(
+        '❌ Change password error: ${e.response?.statusCode} - ${e.response?.data ?? e.message}',
+      );
+      return false;
     } catch (e) {
-      print('❌ Gagal ganti password: $e');
+      debugPrint('❌ Change password unexpected error: $e');
       return false;
     }
   }
@@ -122,7 +149,6 @@ class StoreService {
         'store_name': storeName,
         'address': address,
         'contact': contact,
-        'contact_name': contactName,
         'lat': lat,
         'long': long,
         'open_at': openAt,
@@ -141,12 +167,11 @@ class StoreService {
         );
       }
 
-      final formData = FormData.fromMap(storeData);
-      print("📤 FINAL FORM DATA: ${formData.fields}");
+      // final formData = FormData.fromMap(storeData);
 
       final response = await dio.patch(
-        '/store/update/$storeId',
-        data: formData,
+        '/store/update/$storeId', // ✅ Sesuai backend route
+        data: storeData,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -155,68 +180,25 @@ class StoreService {
         ),
       );
 
-      print('🔗 URL: /store/update/$storeId');
-      print('🔐 TOKEN: $token');
-      print('📦 PAYLOAD: ${storeData.toString()}');
-      print('📡 STATUS: ${response.statusCode}');
-      print('📡 BODY: ${response.data}');
+      debugPrint('🔗 URL: /store/update/$storeId');
+      debugPrint('📦 PAYLOAD: ${storeData.toString()}');
+      debugPrint('📡 STATUS: ${response.statusCode}');
+      debugPrint('📡 BODY: ${response.data}');
 
       if (response.statusCode == 200) {
-        print('✅ Store updated successfully');
+        debugPrint('✅ Store updated successfully');
         return true;
       } else {
-        print(
+        debugPrint(
           '❌ Gagal update store: ${response.statusCode} | ${response.data}',
         );
         return false;
       }
     } catch (e) {
-      print('❌ Exception saat update store: $e');
+      debugPrint('❌ Exception saat update store: $e');
       return false;
     }
   }
-
-  Future<bool> toggleEmergencyCall(int storeId) async {
-    try {
-      final token = box.read('token');
-
-      final response = await dio.patch(
-        'store/emergency/$storeId',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
-
-      return response.statusCode == 200;
-    } catch (e) {
-      print('❌ Error toggleEmergencyCall: $e');
-      return false;
-    }
-  }
-
-  // Future<StoreModel?> getStoreByUser(int userId) async {
-  //   try {
-  //     final token = box.read('token'); // Tambahkan ini
-  //     final response = await dio.get(
-  //       '/owned/store',
-  //       options: Options(headers: {'Authorization': 'Bearer $token'}),
-  //     );
-
-  //     final List<dynamic> data = response.data['data'];
-  //     if (data.isNotEmpty) {
-  //       return StoreModel.fromJson(data[0]);
-  //     } else {
-  //       print('⚠️ Tidak ada data store dari API');
-  //       return null;
-  //     }
-  //   } catch (e) {
-  //     print('❌ Error getStoreByUser: $e');
-  //     return null;
-  //   }
-  // }
 
   Future<List<StoreModel>> fetchStores() async {
     final box = GetStorage();
@@ -230,7 +212,7 @@ class StoreService {
       final List<dynamic> data = response.data['data'];
       return data.map((store) => StoreModel.fromJson(store)).toList();
     } catch (e) {
-      print('❌ Gagal mengambil data: $e');
+      debugPrint('❌ Gagal mengambil data: $e');
       return [];
     }
   }
@@ -250,6 +232,72 @@ class StoreService {
       }
     } else {
       throw Exception("Gagal memuat data bengkel: ${response.statusCode}");
+    }
+  }
+
+  Future<bool> toggleEmergencyCallService({
+    required int storeId,
+    required bool newValue,
+  }) async {
+    final token = box.read('token');
+
+    try {
+      final requestData = {"emergency_call": newValue ? "1" : "0"};
+      debugPrint("🔄 Toggle Emergency Call: $requestData");
+
+      final response = await dio.patch(
+        '/store/emergencycall/update/$storeId',
+        data: requestData,
+        options: Options(
+          headers: {
+            "Authorization": "Bearer $token",
+            "Accept": "application/json",
+          },
+        ),
+      );
+
+      debugPrint("📡 Response: ${response.data}");
+
+      if (response.statusCode == 200) {
+        Get.snackbar("Sukses", response.data['message']);
+        return true; // ✅ hanya return success/fail
+      } else {
+        Get.snackbar("Gagal", "Tidak dapat mengubah status emergency");
+        return false;
+      }
+    } catch (e) {
+      debugPrint("❌ Error toggleEmergencyCallService: $e");
+      Get.snackbar("Error", e.toString());
+      return false;
+    }
+  }
+
+  Future<List<StoreModel>> fetchEmergencyStores() async {
+    try {
+      final response = await _dio.get(
+        'https://api.example.com/stores?emergencyCall=true',
+      );
+
+      if (response.statusCode == 200) {
+        final List data = response.data['data'];
+        return data.map((json) => StoreModel.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error: $e');
+      return [];
+    }
+  }
+
+  // 🔹 Customer: Ambil store emergency call dari endpoint publik
+  Future<List<StoreModel>> getEmergencyStores() async {
+    final response = await dio.get("${ApiBase.baseUrl}stores/emergency");
+
+    if (response.statusCode == 200) {
+      final List data = response.data;
+      return data.map((json) => StoreModel.fromJson(json)).toList();
+    } else {
+      throw Exception("Gagal memuat data emergency");
     }
   }
 }

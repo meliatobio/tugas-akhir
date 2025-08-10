@@ -27,27 +27,27 @@ class _DetailBengkelScreenState extends State<DetailBengkelScreen> {
     if (id != null) {
       fetchDetail(id); // Kirim id ke fungsi
     } else {
-      print('❌ ID tidak valid dari Get.arguments');
+      debugPrint('❌ ID tidak valid dari Get.arguments');
     }
   }
 
   Future<void> fetchDetail(int id) async {
     if (id <= 0) {
-      print('❌ ID store tidak valid: $id');
+      debugPrint('❌ ID store tidak valid: $id');
       return;
     }
 
     final token = StorageService.token;
     if (token == null) {
-      print('❌ Token tidak ditemukan');
+      debugPrint('❌ Token tidak ditemukan');
       return;
     }
 
     final url = '${ApiBase.baseUrl}store/$id';
-    print('🧪 ID: $id');
-    print('🔐 TOKEN: $token');
-    print('🔗 URL: $url');
-    print('📦 GET ARGUMENTS: ${Get.arguments}');
+    debugPrint('🧪 ID: $id');
+    debugPrint('🔐 TOKEN: $token');
+    debugPrint('🔗 URL: $url');
+    debugPrint('📦 GET ARGUMENTS: ${Get.arguments}');
 
     try {
       final response = await http.get(
@@ -58,8 +58,8 @@ class _DetailBengkelScreenState extends State<DetailBengkelScreen> {
         },
       );
 
-      print('📡 STATUS: ${response.statusCode}');
-      print('📡 BODY: ${response.body}');
+      debugPrint('📡 STATUS: ${response.statusCode}');
+      debugPrint('📡 BODY: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body)['data'];
@@ -71,7 +71,7 @@ class _DetailBengkelScreenState extends State<DetailBengkelScreen> {
         throw Exception('Gagal mengambil detail store');
       }
     } catch (e) {
-      print('❌ Error fetchDetail: $e');
+      debugPrint('❌ Error fetchDetail: $e');
       setState(() => isLoading = false);
     }
   }
@@ -105,7 +105,7 @@ class _DetailBengkelScreenState extends State<DetailBengkelScreen> {
                     left: 12,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
+                        color: Colors.black.withAlpha(102),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -243,6 +243,7 @@ class _DetailBengkelScreenState extends State<DetailBengkelScreen> {
                     ),
                     const SizedBox(height: 12),
                     ...storeDetail!.reviews.map((r) {
+                      final int ratingInt = r.rating.floor();
                       return Card(
                         elevation: 2,
                         margin: const EdgeInsets.only(bottom: 10),
@@ -262,7 +263,7 @@ class _DetailBengkelScreenState extends State<DetailBengkelScreen> {
                                   return Icon(
                                     Icons.star,
                                     size: 18,
-                                    color: index < r.rating
+                                    color: index < ratingInt
                                         ? Colors.orange
                                         : Colors.grey,
                                   );
@@ -275,6 +276,7 @@ class _DetailBengkelScreenState extends State<DetailBengkelScreen> {
                         ),
                       );
                     }).toList(),
+
                     const SizedBox(height: 40),
                   ],
                 ),

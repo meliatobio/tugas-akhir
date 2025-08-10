@@ -1,135 +1,99 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-class EmergencyScreen extends StatelessWidget {
-  const EmergencyScreen({super.key});
+class EmergencyScreen extends StatefulWidget {
+  const EmergencyScreen({Key? key}) : super(key: key);
 
-  final List<Map<String, dynamic>> dummyBengkel = const [
-    {
-      'nama': 'Bengkel Andalas',
-      'rating': 4.5,
-      'kontak': '081234567890',
-      'alamat': 'Jl. Merdeka No. 10, Padang',
-    },
-    {
-      'nama': 'Bengkel Jaya Motor',
-      'rating': 4.0,
-      'kontak': '082233445566',
-      'alamat': 'Jl. Veteran No. 5, Bukittinggi',
-    },
-    {
-      'nama': 'Bengkel AutoCare',
-      'rating': 4.8,
-      'kontak': '083312345678',
-      'alamat': 'Jl. Sudirman No. 20, Padang Panjang',
-    },
-  ];
+  @override
+  _EmergencyScreenState createState() => _EmergencyScreenState();
+}
 
-  void _openWhatsApp(String phoneNumber) async {
-    final url = Uri.parse("https://wa.me/$phoneNumber");
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      // Gagal membuka WhatsApp
+class _EmergencyScreenState extends State<EmergencyScreen> {
+  final _storage = const FlutterSecureStorage();
+  final Dio _dio = Dio();
+  List<dynamic> _bengkels = [];
+  bool _loading = true;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEmergencyBengkels();
+  }
+
+  Future<String> _getToken() async {
+    return await _storage.read(key: 'token') ?? '';
+  }
+
+  Future<void> _fetchEmergencyBengkels() async {
+    setState(() {
+      _loading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      String token = await _getToken();
+      if (token.isEmpty) {
+        debugPrint("⚠️ Token kosong, tidak bisa fetch emergency bengkel.");
+        setState(() {
+          _errorMessage = 'Token belum tersedia, coba login ulang.';
+        });
+        return;
+      }
+
+      debugPrint("🔑 Token yang digunakan: $token");
+
+      final response = await _dio.get(
+        'https://your-api.com/api/emergency-bengkels',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint("✅ Data emergency bengkel: ${response.data}");
+        setState(() {
+          _bengkels = response.data ?? [];
+        });
+      } else {
+        debugPrint("❌ Gagal ambil data: ${response.statusCode}");
+        setState(() {
+          _errorMessage =
+              'Error: ${response.statusCode} - ${response.statusMessage}';
+        });
+      }
+    } catch (e) {
+      debugPrint("🔥 Exception: $e");
+      setState(() {
+        _errorMessage = '❌ Error: $e';
+      });
+    } finally {
+      setState(() {
+        _loading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Emergency Call",
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: dummyBengkel.length,
-        itemBuilder: (context, index) {
-          final bengkel = dummyBengkel[index];
-          return Stack(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(bottom: 24, right: 50),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          bengkel['nama'],
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              color: Colors.amber,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(bengkel['rating'].toString()),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.phone, size: 16),
-                        const SizedBox(width: 4),
-                        Text(bengkel['kontak']),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.location_on, size: 16),
-                        const SizedBox(width: 4),
-                        Expanded(child: Text(bengkel['alamat'])),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 16,
-                right: 0,
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.phone_in_talk_rounded,
-                    color: Colors.green,
-                    size: 32,
-                  ),
-                  onPressed: () => _openWhatsApp(bengkel['kontak']),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+      appBar: AppBar(title: const Text('Emergency Bengkel')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
+          ? Center(child: Text(_errorMessage))
+          : ListView.builder(
+              itemCount: _bengkels.length,
+              itemBuilder: (context, index) {
+                final bengkel = _bengkels[index];
+                return ListTile(
+                  title: Text(bengkel['store_name'] ?? 'Tanpa Nama'),
+                  subtitle: Text(bengkel['address'] ?? 'Tanpa Alamat'),
+                );
+              },
+            ),
     );
   }
 }
