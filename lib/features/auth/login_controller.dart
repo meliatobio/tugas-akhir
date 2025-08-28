@@ -20,6 +20,7 @@ class LoginController extends GetxController {
       UserModel? user = await _authUserService.login(email, password);
 
       if (user != null) {
+        debugPrint("🔑 Token User yang dikirim: ${user.token}");
         _handleLogin(user);
         return;
       }
@@ -29,7 +30,8 @@ class LoginController extends GetxController {
 
       if (ownerData != null) {
         final owner = UserModel.fromJson(ownerData['user']);
-        owner.token = ownerData['token'];
+        owner.token = ownerData['token'] ?? '';
+        debugPrint("🔑 Token Owner yang dikirim: ${owner.token}");
         _handleLogin(owner);
         return;
       }
@@ -55,11 +57,17 @@ class LoginController extends GetxController {
 
   Future<void> _handleLogin(UserModel user) async {
     final box = GetStorage();
+
+    // Simpan user & token
     await box.write('user', user.toJson());
     await box.write('token', user.token);
+
+    // Simpan user_id & role
+    await box.write('user_id', user.id);
     await box.write('role', user.role);
     await box.write('isLoggedIn', true);
 
+    // Navigasi berdasarkan role
     if (user.role == 'customer') {
       Get.offAllNamed(Routers.dashboarduser);
     } else if (user.role == 'owner' || user.role == 'store') {

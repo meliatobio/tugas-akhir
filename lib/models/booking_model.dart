@@ -1,6 +1,7 @@
 class BookingModel {
   final int id;
-  final String status;
+  String status; // bisa diubah
+  final String username;
   final String bookingDate;
   final String bookingTime;
   final String vehicleType;
@@ -9,10 +10,13 @@ class BookingModel {
   final int dpAmount;
   final double totalPrice;
   final String bankAccount;
+  final int storeId;
+  final String storeName;
 
   BookingModel({
     required this.id,
     required this.status,
+    required this.username,
     required this.bookingDate,
     required this.bookingTime,
     required this.vehicleType,
@@ -21,35 +25,57 @@ class BookingModel {
     required this.dpAmount,
     required this.totalPrice,
     required this.bankAccount,
+    required this.storeId,
+    required this.storeName,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
-    final String fullTime = json['booking_time'] ?? '';
-    final split = fullTime.split('T');
-    final date = split.isNotEmpty ? split.first : '';
-    final time = split.length > 1 ? split.last.substring(0, 5) : '';
+    final String fullTime = json['booking_time']?.toString() ?? '';
+    String date = '';
+    String time = '';
+    if (fullTime.contains('T')) {
+      final split = fullTime.split('T');
+      date = split.first;
+      time = split.length > 1 ? split.last.substring(0, 5) : '';
+    } else if (fullTime.contains(' ')) {
+      final split = fullTime.split(' ');
+      date = split.first;
+      time = split.length > 1 ? split.last.substring(0, 5) : '';
+    }
 
     return BookingModel(
-      id: json['id'] is int
-          ? json['id']
-          : int.tryParse(json['id'].toString()) ?? 0,
+      id: int.tryParse(json['id'].toString()) ?? 0,
       status: json['status'] ?? 'Menunggu',
       bookingDate: date,
       bookingTime: time,
+      username: json['user']?['name'] ?? json['name'] ?? '-',
+
       vehicleType: json['vehicle_type'] ?? '-',
       licensePlate: json['license_plate'] ?? '-',
-      serviceName: json['service_name'] ?? '-',
-      dpAmount: json['dp_amount'] ?? 0,
-      totalPrice: (json['total_price'] != null)
-          ? double.tryParse(json['total_price'].toString()) ?? 0.0
-          : 0.0,
+
+      // ✅ perbaikan mapping serviceName
+      serviceName:
+          json['service_name'] ??
+          json['service']?['service_name'] ??
+          json['service']?['name'] ?? // ✅ fallback ke 'name'
+          'Unknown',
+
+      dpAmount: int.tryParse(json['dp_amount']?.toString() ?? '0') ?? 0,
+      totalPrice:
+          double.tryParse(json['total_price']?.toString() ?? '0.0') ?? 0.0,
       bankAccount: json['bank_account'] ?? '-',
+      storeId: int.tryParse(json['store_id']?.toString() ?? '0') ?? 0,
+
+      // ✅ perbaikan mapping storeName
+      storeName:
+          json['store_name'] ?? json['store']?['store_name'] ?? 'Unknown',
     );
   }
 
   Map<String, dynamic> toMap() => {
     "id": id,
     "status": status,
+    "username": username,
     "tanggal": bookingDate,
     "jam": bookingTime,
     "jenisKendaraan": vehicleType,
@@ -58,5 +84,7 @@ class BookingModel {
     "dp": dpAmount,
     "totalHarga": totalPrice,
     "rekening": bankAccount,
+    "storeId": storeId,
+    "storeName": storeName,
   };
 }

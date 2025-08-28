@@ -9,6 +9,10 @@ import 'package:image_picker/image_picker.dart';
 final box = GetStorage();
 
 class AuthOwnerService {
+  String? getProfilePicture() {
+    return box.read('profile_pict');
+  }
+
   final Dio dio = Dio(
     BaseOptions(
       baseUrl: ApiBase.baseUrl,
@@ -259,6 +263,8 @@ class AuthOwnerService {
     String email,
     String password,
   ) async {
+    final box = GetStorage();
+
     try {
       final response = await dio.post(
         '/auth/login',
@@ -267,6 +273,16 @@ class AuthOwnerService {
 
       if (response.statusCode == 200) {
         final data = response.data;
+
+        // 🧠 Simpan token dan userId
+        await box.write('token', data['token']);
+        await box.write('role', data['user']['role']);
+        await box.write('user', data['user']);
+        await box.write('userId', data['user']['id']);
+
+        debugPrint('✅ Token disimpan (owner): ${data['token']}');
+        debugPrint('✅ User ID disimpan (owner): ${data['user']['id']}');
+
         return {'token': data['token'], 'user': data['user']};
       } else {
         return null;
@@ -338,6 +354,7 @@ class AuthOwnerService {
           headers: {
             'Authorization': 'Bearer $token',
             'Accept': 'application/json',
+            'Content-Type': 'multipart/form-data', // ✅ wajib untuk upload
           },
         ),
       );
@@ -351,5 +368,44 @@ class AuthOwnerService {
       debugPrint('❌ Unknown error saat register store: $e');
       return false;
     }
+  }
+
+  Future<String?> uploadProfilePicture(File imageFile) async {
+    try {
+      final token = box.read('token'); // ambil token dari GetStorage
+
+      final formData = FormData.fromMap({
+        'profile_pict': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: imageFile.path.split('/').last,
+        ),
+      });
+
+      final response = await dio.post(
+        '/profile/picture',
+        data: formData,
+        options: Options(
+          headers: {
+            "Content-Type": "multipart/form-data",
+            "Authorization": "Bearer $token",
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final url = response.data['profile_pict_url'];
+
+        // ✅ simpan ke GetStorage supaya persist
+        box.write('profile_pict', url);
+
+        debugPrint('✅ Upload success: $url');
+        return url;
+      }
+    } on DioException catch (e) {
+      debugPrint(
+        '❌ Upload error: ${e.response?.statusCode} - ${e.response?.data}',
+      );
+    }
+    return null;
   }
 }

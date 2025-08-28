@@ -18,7 +18,7 @@ class _DashboardUserScreenState extends State<DashboardUserScreen> {
 
   final List<Widget> _pages = [
     HomeUserScreen(),
-    const BookingScreen(),
+    BookingScreen(),
     const RiwayatUserScreen(),
     const ProfileUserScreen(),
   ];

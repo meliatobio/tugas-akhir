@@ -1,10 +1,8 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
-import 'package:bengkel/constants/api_base.dart';
+import 'package:bengkel/features/user/screens/booking/transaksi_booking_screen.dart';
 import 'package:bengkel/services/storage_service.dart';
+import 'package:bengkel/models/service_model.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class InputBookingScreen extends StatefulWidget {
   const InputBookingScreen({super.key});
@@ -14,210 +12,290 @@ class InputBookingScreen extends StatefulWidget {
 }
 
 class _InputBookingScreenState extends State<InputBookingScreen> {
-  final TextEditingController _vehicleTypeController = TextEditingController();
-  final TextEditingController _licensePlateController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
-  DateTime? selectedDate;
-  TimeOfDay? selectedTime;
-  Map<String, dynamic>? selectedLayanan;
-  bool isLoading = false;
+  int? selectedServiceId;
+  String? selectedVehicleType;
+  final licensePlateController = TextEditingController();
+  DateTime? bookingDateTime;
+  final notesController = TextEditingController();
+  String paymentMethod = 'cash';
+  late String openAt;
+  late String closeAt;
+  late List<ServiceModel> layananList;
+  late int storeId;
+  bool isSubmitting = false;
+  bool get isFormValid {
+    return selectedServiceId != null &&
+        selectedVehicleType != null &&
+        licensePlateController.text.isNotEmpty &&
+        bookingDateTime != null;
+  }
 
   @override
-  void dispose() {
-    _vehicleTypeController.dispose();
-    _licensePlateController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    final args = Get.arguments as Map<String, dynamic>? ?? {};
+    layananList = args['layananList'] ?? [];
+    storeId = args['storeId'] ?? 0;
+    openAt = args['openAt'] ?? "08:00";
+    closeAt = args['closeAt'] ?? "17:00";
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null) {
-      setState(() {
-        selectedDate = picked;
-      });
-    }
-  }
+  void submitBooking() {
+    if (!_formKey.currentState!.validate()) return;
 
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        selectedTime = picked;
-      });
-    }
-  }
-
-  Future<void> _submitBooking({
-    required int storeId,
-    required String vehicleType,
-    required String licensePlate,
-    required String serviceId,
-  }) async {
-    final token = StorageService.token;
-
-    if (token == null) {
-      Get.snackbar("Error", "Token tidak ditemukan.");
+    if (bookingDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih tanggal dan waktu booking')),
+      );
       return;
     }
 
-    setState(() => isLoading = true);
-
-    try {
-      final bookingDateTime = DateTime(
-        selectedDate!.year,
-        selectedDate!.month,
-        selectedDate!.day,
-        selectedTime!.hour,
-        selectedTime!.minute,
+    if (selectedServiceId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih layanan terlebih dahulu')),
       );
-
-      final url = Uri.parse('${ApiBase.baseUrl}booking');
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'store_id': storeId,
-          'vehicle_type': vehicleType,
-          'license_plate': licensePlate,
-          'service_id': serviceId,
-          'booking_datetime': bookingDateTime.toIso8601String(),
-        }),
-      );
-
-      final responseData = jsonDecode(response.body);
-      debugPrint('📦 Response: $responseData');
-
-      if (response.statusCode == 201) {
-        Get.snackbar("Berhasil", "Booking berhasil dilakukan.");
-        Get.offAllNamed('/riwayattransaksi'); // atau kembali ke home/riwayat
-      } else {
-        Get.snackbar("Gagal", responseData['message'] ?? "Terjadi kesalahan.");
-      }
-    } catch (e) {
-      Get.snackbar("Error", "Gagal mengirim data: $e");
-    } finally {
-      setState(() => isLoading = false);
+      return;
     }
+
+    final selectedService = layananList.firstWhere(
+      (s) => s.id == selectedServiceId,
+    );
+
+    final transaction = {
+      "userId": StorageService.userId,
+      "storeId": storeId,
+      "serviceId": selectedServiceId,
+      "jenisKendaraan": selectedVehicleType,
+      "noPol": licensePlateController.text,
+      "tanggal":
+          "${bookingDateTime!.day}/${bookingDateTime!.month}/${bookingDateTime!.year}",
+      "jam":
+          "${bookingDateTime!.hour.toString().padLeft(2, '0')}:${bookingDateTime!.minute.toString().padLeft(2, '0')}",
+      "bookingDateTime": bookingDateTime,
+      "layanan": selectedService.name,
+      "totalHarga": selectedService.price,
+      "catatan": notesController.text,
+      "paymentMethod": paymentMethod,
+    };
+
+    Get.to(() => TransaksiBookingScreen(transaction: transaction));
+  }
+
+  @override
+  void dispose() {
+    licensePlateController.dispose();
+    notesController.dispose();
+    super.dispose();
+  }
+
+  Widget buildFormCard(Widget child) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: child,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final arguments = Get.arguments;
-    final int? storeId = arguments['storeId'];
-    final List<dynamic> layananList = arguments['layananList'] ?? [];
-
-    final String totalHarga =
-        selectedLayanan?['price']?.toStringAsFixed(0) ?? '-';
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Transaksi')),
+      appBar: AppBar(
+        title: const Text(
+          'Input Booking',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 1,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            TextField(
-              controller: _vehicleTypeController,
-              decoration: const InputDecoration(labelText: 'Jenis Kendaraan'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _licensePlateController,
-              decoration: const InputDecoration(labelText: 'Nomor Polisi'),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text('Tanggal'),
-              subtitle: Text(
-                selectedDate != null
-                    ? DateFormat('dd MMM yyyy').format(selectedDate!)
-                    : 'Pilih tanggal',
-              ),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () => _selectDate(context),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text('Jam'),
-              subtitle: Text(
-                selectedTime != null
-                    ? selectedTime!.format(context)
-                    : 'Pilih jam',
-              ),
-              trailing: const Icon(Icons.access_time),
-              onTap: () => _selectTime(context),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<Map<String, dynamic>>(
-              decoration: const InputDecoration(labelText: 'Pilih Layanan'),
-              value: selectedLayanan,
-              items: layananList.map((layanan) {
-                return DropdownMenuItem<Map<String, dynamic>>(
-                  value: layanan,
-                  child: Text(layanan['name']),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedLayanan = value;
-                });
-              },
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Total Harga:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  'Rp $totalHarga',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              buildFormCard(
+                DropdownButtonFormField<int>(
+                  value: selectedServiceId,
+                  items: layananList.map((service) {
+                    return DropdownMenuItem(
+                      value: service.id,
+                      child: Text("${service.name} - Rp ${service.price}"),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => selectedServiceId = val),
+                  validator: (val) => val == null ? 'Pilih layanan' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Layanan',
+                    border: InputBorder.none,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: isLoading
-                  ? null
-                  : () {
-                      if (_vehicleTypeController.text.isEmpty ||
-                          _licensePlateController.text.isEmpty ||
-                          selectedDate == null ||
-                          selectedTime == null ||
-                          selectedLayanan == null ||
-                          storeId == null) {
-                        Get.snackbar('Error', 'Semua data harus diisi.');
-                        return;
-                      }
-
-                      _submitBooking(
-                        storeId: storeId,
-                        vehicleType: _vehicleTypeController.text,
-                        licensePlate: _licensePlateController.text,
-                        serviceId: selectedLayanan!['id'].toString(),
+              ),
+              buildFormCard(
+                DropdownButtonFormField<String>(
+                  value: selectedVehicleType,
+                  items: const [
+                    DropdownMenuItem(value: 'motorcycle', child: Text('Motor')),
+                    DropdownMenuItem(value: 'car', child: Text('Mobil')),
+                  ],
+                  onChanged: (val) => setState(() => selectedVehicleType = val),
+                  validator: (val) =>
+                      val == null ? 'Pilih tipe kendaraan' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipe Kendaraan',
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              buildFormCard(
+                TextFormField(
+                  controller: licensePlateController,
+                  decoration: const InputDecoration(
+                    labelText: 'Plat Nomor',
+                    border: InputBorder.none,
+                  ),
+                  validator: (val) =>
+                      val == null || val.isEmpty ? 'Masukkan plat nomor' : null,
+                ),
+              ),
+              buildFormCard(
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    bookingDateTime == null
+                        ? 'Pilih Tanggal Booking'
+                        : "${bookingDateTime!.day}/${bookingDateTime!.month}/${bookingDateTime!.year} "
+                              "${bookingDateTime!.hour.toString().padLeft(2, '0')}:${bookingDateTime!.minute.toString().padLeft(2, '0')}",
+                    style: TextStyle(
+                      color: bookingDateTime == null
+                          ? Colors.grey[600]
+                          : Colors.black87,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.calendar_today, size: 20),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+                    if (date != null) {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now(),
                       );
-                    },
-              child: isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Konfirmasi'),
-            ),
-          ],
+                      if (time != null) {
+                        final selected = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
+                        );
+
+                        final openParts = openAt.split(":");
+                        final closeParts = closeAt.split(":");
+                        final openDateTime = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          int.parse(openParts[0]),
+                          int.parse(openParts[1]),
+                        );
+                        final closeDateTime = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          int.parse(closeParts[0]),
+                          int.parse(closeParts[1]),
+                        );
+
+                        if (selected.isBefore(openDateTime) ||
+                            selected.isAfter(closeDateTime)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Jam booking harus antara $openAt - $closeAt WIB",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        setState(() {
+                          bookingDateTime = selected;
+                        });
+                      }
+                    }
+                  },
+                ),
+              ),
+              buildFormCard(
+                TextFormField(
+                  controller: notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan',
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              buildFormCard(
+                DropdownButtonFormField<String>(
+                  value: paymentMethod,
+                  items: const [
+                    DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                    DropdownMenuItem(
+                      value: 'transfer',
+                      child: Text('Transfer Bank'),
+                    ),
+                  ],
+                  onChanged: (val) =>
+                      setState(() => paymentMethod = val ?? 'cash'),
+                  decoration: const InputDecoration(
+                    labelText: 'Metode Pembayaran',
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: isFormValid && !isSubmitting
+                      ? submitBooking
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    backgroundColor: isFormValid ? Colors.amber : Colors.grey,
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                  child: isSubmitting
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Kirim Booking',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

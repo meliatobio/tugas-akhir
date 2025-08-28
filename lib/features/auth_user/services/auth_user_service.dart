@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bengkel/constants/api_base.dart';
 import 'package:dio/dio.dart';
 import 'package:bengkel/models/user_model.dart';
@@ -160,6 +162,34 @@ class AuthUserService {
     }
   }
 
+  Future<bool> lupaPassword({
+    required String email,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      final response = await _dio.post(
+        'auth/reset-password',
+        data: {
+          'email': email,
+          'new_password': newPassword,
+          'new_password_confirmation': confirmPassword,
+        },
+      );
+
+      debugPrint('✅ Reset password response: ${response.data}');
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      debugPrint(
+        '❌ Reset password error: ${e.response?.statusCode} - ${e.response?.data ?? e.message}',
+      );
+      return false;
+    } catch (e) {
+      debugPrint('❌ Reset password unexpected error: $e');
+      return false;
+    }
+  }
+
   /// 🔐 Change Password
   Future<bool> changePassword({
     required String oldPassword,
@@ -201,5 +231,40 @@ class AuthUserService {
       debugPrint('❌ Change password unexpected error: $e');
       return false;
     }
+  }
+
+  /// 📤 Upload / Ganti Foto Profil
+  Future<String?> uploadProfilePicture(File imageFile) async {
+    try {
+      final formData = FormData.fromMap({
+        'profile_pict': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: imageFile.path.split('/').last,
+        ),
+      });
+
+      final response = await _dio.post(
+        'profile/picture',
+        data: formData,
+        options: Options(
+          headers: {
+            "Content-Type": "multipart/form-data",
+            "Authorization":
+                _dio.options.headers["Authorization"], // token sudah ada
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Upload success: ${response.data}');
+        return response.data['profile_pict_url'];
+      }
+    } on DioException catch (e) {
+      debugPrint(
+        '❌ Upload profile picture error: ${e.response?.statusCode} - ${e.response?.data ?? e.message}',
+      );
+    }
+
+    return null;
   }
 }

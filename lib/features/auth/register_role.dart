@@ -16,14 +16,8 @@ class RegisterRoleScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Logo bulat kuning
-              Container(
-                width: 140,
-                height: 140,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFC107),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              Image.asset('assets/images/logo.png', width: 120, height: 120),
+
               const SizedBox(height: 20),
 
               // Welcome text

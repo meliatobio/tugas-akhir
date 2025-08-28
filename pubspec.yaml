@@ -47,6 +47,13 @@ dependencies:
   logger: ^2.0.2
   jwt_decoder: ^2.0.1
   flutter_secure_storage: ^9.2.4
+  open_file: ^3.5.10
+  path_provider: ^2.1.5
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  screenshot: ^3.0.0
+  excel: ^4.0.6
+  flutter_rating_bar: ^4.0.1
   
 dev_dependencies:
   flutter_test:

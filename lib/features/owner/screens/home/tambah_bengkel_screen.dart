@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:bengkel/constants/api_base.dart';
 import 'package:bengkel/features/owner/screens/dashboard/dashboard_owner.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart' as dio_pkg;
 
 class TambahBengkelScreen extends StatefulWidget {
   const TambahBengkelScreen({super.key});
@@ -23,6 +25,7 @@ class _TambahBengkelScreenState extends State<TambahBengkelScreen> {
   final closeAtController = TextEditingController();
 
   List<String> selectedVehicleTypes = [];
+  XFile? pickedImage;
   bool isLoading = false;
 
   @override
@@ -41,52 +44,149 @@ class _TambahBengkelScreenState extends State<TambahBengkelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Tambah Bengkel")),
+      backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text(
+          "Tambah Bengkel",
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTextField("Nama Bengkel", nameController),
-                  _buildTextField("Alamat Bengkel", addressController),
-                  _buildTextField("Nomor Kontak", contactController),
-                  _buildTextField(
-                    "Nama Penanggung Jawab",
-                    contactNameController,
-                  ),
-                  _buildTextField("Latitude", latController),
-                  _buildTextField("Longitude", longController),
-                  _buildTextField("Jam Buka (contoh: 08:00)", openAtController),
-                  _buildTextField(
-                    "Jam Tutup (contoh: 17:00)",
-                    closeAtController,
-                  ),
-
-                  const SizedBox(height: 12),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Jenis Kendaraan:",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          _buildTextField(
+                            "Nama Bengkel",
+                            nameController,
+                            icon: Icons.store,
+                          ),
+                          _buildTextField(
+                            "Alamat Bengkel",
+                            addressController,
+                            icon: Icons.location_on,
+                          ),
+                          _buildTextField(
+                            "Nomor Kontak",
+                            contactController,
+                            icon: Icons.phone,
+                          ),
+                          _buildTextField(
+                            "Nama Penanggung Jawab",
+                            contactNameController,
+                            icon: Icons.person,
+                          ),
+                          _buildTextField(
+                            "Latitude",
+                            latController,
+                            icon: Icons.map,
+                          ),
+                          _buildTextField(
+                            "Longitude",
+                            longController,
+                            icon: Icons.map_outlined,
+                          ),
+                          _buildTextField(
+                            "Jam Buka (contoh: 08:00)",
+                            openAtController,
+                            icon: Icons.access_time,
+                          ),
+                          _buildTextField(
+                            "Jam Tutup (contoh: 17:00)",
+                            closeAtController,
+                            icon: Icons.access_time_filled,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  CheckboxListTile(
-                    value: selectedVehicleTypes.contains("motor"),
-                    onChanged: (val) => _toggleVehicleType("motor"),
-                    title: const Text("Motor"),
-                  ),
-                  CheckboxListTile(
-                    value: selectedVehicleTypes.contains("car"),
-                    onChanged: (val) => _toggleVehicleType("car"),
-                    title: const Text("Mobil"),
-                  ),
-
                   const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: _submit,
-                    icon: const Icon(Icons.save),
-                    label: const Text("Simpan Bengkel"),
+                  const Text(
+                    "Jenis Kendaraan",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontFamily: "Poppins",
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 10,
+                    children: [
+                      ChoiceChip(
+                        label: const Text("Motor"),
+                        selected: selectedVehicleTypes.contains("motor"),
+                        onSelected: (_) => _toggleVehicleType("motor"),
+                        selectedColor: Colors.amber,
+                      ),
+                      ChoiceChip(
+                        label: const Text("Mobil"),
+                        selected: selectedVehicleTypes.contains("mobil"),
+                        onSelected: (_) => _toggleVehicleType("mobil"),
+                        selectedColor: Colors.amber,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  if (pickedImage != null)
+                    Center(
+                      child: Image.file(
+                        File(pickedImage!.path),
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text("Pilih Foto Bengkel"),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 3,
+                      ),
+                      onPressed: _submit,
+                      icon: const Icon(Icons.save, color: Colors.white),
+                      label: const Text(
+                        "Simpan Bengkel",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black,
+                          fontFamily: "Poppins",
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -94,14 +194,37 @@ class _TambahBengkelScreenState extends State<TambahBengkelScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    IconData? icon,
+  }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: controller,
         decoration: InputDecoration(
+          prefixIcon: icon != null ? Icon(icon, color: Colors.amber) : null,
           labelText: label,
-          border: const OutlineInputBorder(),
+          labelStyle: const TextStyle(fontFamily: "Poppins"),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 14,
+            horizontal: 12,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.amber, width: 1.5),
+          ),
         ),
       ),
     );
@@ -114,28 +237,33 @@ class _TambahBengkelScreenState extends State<TambahBengkelScreen> {
       } else {
         selectedVehicleTypes.add(type);
       }
-
-      debugPrint("✅ selectedVehicleTypes updated: $selectedVehicleTypes");
     });
   }
 
-  void _submit() async {
-    debugPrint("🚀 SUBMIT DIJALANKAN");
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() => pickedImage = image);
+    }
+  }
 
-    // Validasi kosong
-    if (nameController.text.trim().isEmpty ||
-        addressController.text.trim().isEmpty ||
-        contactController.text.trim().isEmpty ||
-        contactNameController.text.trim().isEmpty ||
-        latController.text.trim().isEmpty ||
-        longController.text.trim().isEmpty ||
-        openAtController.text.trim().isEmpty ||
-        closeAtController.text.trim().isEmpty ||
+  Future<void> _submit() async {
+    if (nameController.text.isEmpty ||
+        addressController.text.isEmpty ||
+        contactController.text.isEmpty ||
+        contactNameController.text.isEmpty ||
+        latController.text.isEmpty ||
+        longController.text.isEmpty ||
+        openAtController.text.isEmpty ||
+        closeAtController.text.isEmpty ||
         selectedVehicleTypes.isEmpty) {
-      Get.snackbar(
-        "Error",
-        "Harap lengkapi semua data termasuk jenis kendaraan.",
-      );
+      Get.snackbar("Error", "Harap lengkapi semua data.");
+      return;
+    }
+
+    if (pickedImage == null) {
+      Get.snackbar("Error", "Foto bengkel wajib dipilih.");
       return;
     }
 
@@ -147,72 +275,76 @@ class _TambahBengkelScreenState extends State<TambahBengkelScreen> {
       return;
     }
 
-    final userId = user['id'];
-
-    final data = {
-      "user_id": userId,
-      "store_name": nameController.text.trim(),
-      "address": addressController.text.trim(),
-      "contact": contactController.text.trim(),
-      "contact_name": contactNameController.text.trim(),
-      "lat": double.tryParse(latController.text.trim()),
-      "long": double.tryParse(longController.text.trim()),
-      "open_at": openAtController.text.trim().replaceAll(
-        '.',
-        ':',
-      ), // format HH:mm
-      "close_at": closeAtController.text.trim().replaceAll('.', ':'),
-      "accepted_vehicle_types":
-          selectedVehicleTypes, // contoh: ['motor', 'mobil']
-    };
-
-    debugPrint("📤 DATA YANG DIKIRIM: $data");
-
     setState(() => isLoading = true);
 
     try {
-      final response = await Dio().post(
-        ApiBase.uri('store/register').toString(),
-        data: data,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
+      final formData = dio_pkg.FormData();
+
+      final storeData = {
+        "user_id": user['id'],
+        "store_name": nameController.text.trim(),
+        "address": addressController.text.trim(),
+        "contact": contactController.text.trim(),
+        "contact_name": contactNameController.text.trim(),
+        "lat": double.tryParse(latController.text.trim()) ?? 0.0,
+        "long": double.tryParse(longController.text.trim()) ?? 0.0,
+        "open_at": openAtController.text.trim().replaceAll('.', ':'),
+        "close_at": closeAtController.text.trim().replaceAll('.', ':'),
+        "accepted_vehicle_types": selectedVehicleTypes,
+      };
+
+      // Tambahkan fields ke FormData
+      storeData.forEach((key, value) {
+        if (key == 'accepted_vehicle_types' &&
+            value != null &&
+            value is List<String>) {
+          for (var type in value) {
+            formData.fields.add(MapEntry('accepted_vehicle_types[]', type));
+          }
+        } else {
+          formData.fields.add(MapEntry(key, value.toString()));
+        }
+      });
+
+      // Tambahkan image
+      formData.files.add(
+        MapEntry(
+          'image',
+          await dio_pkg.MultipartFile.fromFile(
+            pickedImage!.path,
+            filename: pickedImage!.name,
+          ),
         ),
       );
 
-      debugPrint("✅ RESPONSE DARI BACKEND: ${response.data}");
+      final response = await dio_pkg.Dio().post(
+        ApiBase.uri('store/register').toString(),
+        data: formData,
+        options: dio_pkg.Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+      debugPrint('Fields yang dikirim:');
+      formData.fields.forEach((f) => debugPrint('${f.key}: ${f.value}'));
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        Get.snackbar("Sukses", "Bengkel berhasil ditambahkan");
-        Get.back(result: 'refresh');
-      } else {
-        Get.snackbar(
-          "Error",
-          "Gagal menambahkan bengkel (${response.statusCode})",
-        );
-      }
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        Get.snackbar("Sukses", "Bengkel berhasil ditambahkan");
+      debugPrint('Files yang dikirim:');
+      formData.files.forEach(
+        (f) => debugPrint('${f.key}: ${f.value.filename}'),
+      );
 
-        // Navigasi ke DashboardOwnerScreen dan buka tab Home (index 0)
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        Get.snackbar("Sukses", "Bengkel berhasil ditambahkan");
         Get.offAll(() => const DashboardOwnerScreen(), arguments: 0);
-      }
-    } on DioException catch (e) {
-      if (e.response != null) {
-        debugPrint("❌ ERROR RESPONSE: ${e.response?.data}");
-        Get.snackbar(
-          "Error",
-          e.response?.data['message'] ?? "Gagal mendaftarkan bengkel",
-        );
       } else {
-        debugPrint("❌ ERROR TANPA RESPONSE: ${e.message}");
-        Get.snackbar("Error", "Tidak dapat menghubungi server");
+        Get.snackbar("Error", "Gagal menambahkan bengkel");
       }
     } catch (e) {
-      debugPrint("❌ ERROR TAK TERDUGA: $e");
-      Get.snackbar("Error", "Terjadi kesalahan tidak terduga");
+      debugPrint("❌ Error submit: $e");
+      Get.snackbar("Error", "Terjadi kesalahan saat submit");
     } finally {
       setState(() => isLoading = false);
     }

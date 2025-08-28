@@ -289,7 +289,7 @@ class _RegisterOwnerScreenState extends State<RegisterOwnerScreen> {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black.withOpacity(0.8),
+                        color: Colors.black.withAlpha(204),
                       ),
                     ),
                   ),
@@ -345,16 +345,27 @@ class _RegisterOwnerScreenState extends State<RegisterOwnerScreen> {
               "No Telepon Kontak Bengkel",
               contactPhoneController,
               keyboardType: TextInputType.phone,
+              suffixIcon: const Icon(
+                Icons.phone,
+                color: Colors.green,
+              ), // 📞 hijau
             ),
+
             _buildInputField(
               "Latitude",
               _latController,
               keyboardType: TextInputType.number,
+              suffixIcon: const Icon(
+                Icons.location_on,
+                color: Colors.red,
+              ), // 📍 merah
             ),
+
             _buildInputField(
               "Longitude",
               _longController,
               keyboardType: TextInputType.number,
+              suffixIcon: const Icon(Icons.map, color: Colors.blue), // 🗺️ biru
             ),
 
             Padding(
@@ -400,7 +411,13 @@ class _RegisterOwnerScreenState extends State<RegisterOwnerScreen> {
               ),
             ),
 
-            // Checkbox Motor
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: const Text(
+                "Jenis Kendaraan yang di layani",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ), // Checkbox Motor
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: CheckboxListTile(

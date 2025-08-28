@@ -171,7 +171,7 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black.withOpacity(0.8),
+                        color: Colors.black.withAlpha(204),
                       ),
                     ),
                   ),

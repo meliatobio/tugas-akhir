@@ -32,8 +32,8 @@ class _EditProfileUserScreenState extends State<EditProfileUserScreen> {
     final token = box.read('token');
 
     if (token != null) {
-      _authService.setToken(token); // penting
-      final result = await _authService.getProfile(); // tidak perlu token lagi
+      _authService.setToken(token);
+      final result = await _authService.getProfile();
 
       if (result != null) {
         setState(() {
@@ -74,17 +74,11 @@ class _EditProfileUserScreenState extends State<EditProfileUserScreen> {
 
       final success = await _authService.updateProfile(data);
       if (success) {
-        // 🔁 Segarkan profil user di GetStorage jika perlu
         final updatedProfile = await _authService.getProfile();
         final box = GetStorage();
-        box.write(
-          'profile',
-          updatedProfile,
-        ); // optional, jika kamu simpan secara lokal
+        box.write('profile', updatedProfile);
 
-        // ⬅️ Kembali ke ProfileUserScreen dan refresh data
         Get.offAllNamed('/dashboarduser', arguments: {'tab': 3});
-
         Get.snackbar(
           "Sukses",
           "Profil berhasil diperbarui",
@@ -112,22 +106,37 @@ class _EditProfileUserScreenState extends State<EditProfileUserScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: Colors.black,
+          ),
         ),
         const SizedBox(height: 6),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          validator: (value) =>
-              value == null || value.isEmpty ? "Tidak boleh kosong" : null,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            validator: (value) =>
+                value == null || value.isEmpty ? "Tidak boleh kosong" : null,
+            decoration: const InputDecoration(
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              border: InputBorder.none,
             ),
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
         const SizedBox(height: 18),
@@ -138,51 +147,104 @@ class _EditProfileUserScreenState extends State<EditProfileUserScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Edit Profil"),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    _buildField("Name", _nameC),
-                    _buildField(
-                      "Email",
-                      _emailC,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    _buildField(
-                      "No. Telepon",
-                      _phoneC,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    _buildField("Alamat", _addressC),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFE082), Color(0xFFFFF8E1)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Tombol kembali
+                      IconButton(
+                        onPressed: () => Get.back(),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.black87,
                         ),
                       ),
-                      child: const Text(
-                        "Simpan",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
+
+                      const Center(
+                        child: Text(
+                          "Edit Profil",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              _buildField("Name", _nameC),
+                              _buildField(
+                                "Email",
+                                _emailC,
+                                keyboardType: TextInputType.emailAddress,
+                              ),
+                              _buildField(
+                                "No. Telepon",
+                                _phoneC,
+                                keyboardType: TextInputType.phone,
+                              ),
+                              _buildField("Alamat", _addressC),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _saveProfile,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFFC107),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 3,
+                                  ),
+                                  child: const Text(
+                                    "Simpan",
+                                    style: TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+        ),
+      ),
     );
   }
 }

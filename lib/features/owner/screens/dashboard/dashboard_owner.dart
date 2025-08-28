@@ -1,6 +1,6 @@
 import 'package:bengkel/features/owner/screens/home/home_owner.dart';
 import 'package:bengkel/features/owner/screens/profile/profile_owner.dart';
-import 'package:bengkel/features/owner/screens/riwayat/riwayat_owner.dart';
+import 'package:bengkel/features/owner/screens/riwayat/kelola_booking.dart';
 import 'package:bengkel/features/owner/widgets/bottom_navigation_bar_owner.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -26,7 +26,7 @@ class _DashboardOwnerScreenState extends State<DashboardOwnerScreen> {
 
   final List<Widget> _pages = [
     HomeOwnerScreen(),
-    const RiwayatOwnerScreen(),
+    const KelolaBookingScreen(),
     const ProfileOwnerScreen(),
   ];
 

@@ -60,7 +60,20 @@ class LoginScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 50),
                   // Avatar Placeholder
-                  CircleAvatar(radius: 60, backgroundColor: Colors.white),
+                  // Avatar Placeholder diganti dengan logo
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.white,
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.cover,
+                        width: 100,
+                        height: 100,
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 10),
                   const Text(
                     "Login",
@@ -70,7 +83,7 @@ class LoginScreen extends StatelessWidget {
                       color: Colors.black,
                     ),
                   ),
-                  const SizedBox(height: 120),
+                  const SizedBox(height: 110),
                   // Email Field
                   _buildTextField(
                     controller: emailController,
@@ -97,6 +110,25 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8), // jarak kecil ke bawah
+
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () {
+                        Get.toNamed(Routers.lupapassword);
+                      },
+                      child: const Text(
+                        "Lupa Password?",
+                        style: TextStyle(
+                          color: Color(0xFFFFC107),
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 24),
                   // Tombol Login
                   ElevatedButton(

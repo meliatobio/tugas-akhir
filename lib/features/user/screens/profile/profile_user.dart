@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:bengkel/app/routers.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:bengkel/features/auth_user/services/auth_user_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileUserScreen extends StatefulWidget {
   const ProfileUserScreen({super.key});
@@ -56,7 +58,20 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
 
     Get.dialog(
       AlertDialog(
-        title: const Text("Ubah Password"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.lock_outline, color: Colors.orange, size: 20),
+            SizedBox(width: 6),
+            Text(
+              "Ubah Password",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16, // kecil dan elegan
+              ),
+            ),
+          ],
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -64,38 +79,67 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
               TextField(
                 controller: oldPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password Lama'),
+                decoration: const InputDecoration(
+                  labelText: 'Password Lama',
+                  labelStyle: TextStyle(fontSize: 14),
+                  prefixIcon: Icon(Icons.lock_clock_outlined, size: 20),
+                  border: OutlineInputBorder(),
+                ),
               ),
+              const SizedBox(height: 10),
               TextField(
                 controller: newPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password Baru'),
+                decoration: const InputDecoration(
+                  labelText: 'Password Baru',
+                  labelStyle: TextStyle(fontSize: 14),
+                  prefixIcon: Icon(Icons.lock_open_rounded, size: 20),
+                  border: OutlineInputBorder(),
+                ),
               ),
+              const SizedBox(height: 10),
               TextField(
                 controller: confirmPasswordController,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: 'Konfirmasi Password Baru',
+                  labelStyle: TextStyle(fontSize: 14),
+                  prefixIcon: Icon(Icons.lock_reset_rounded, size: 20),
+                  border: OutlineInputBorder(),
                 ),
               ),
             ],
           ),
         ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text("Batal")),
           TextButton(
+            onPressed: () => Get.back(),
+            child: const Text("Batal", style: TextStyle(fontSize: 14)),
+          ),
+          ElevatedButton(
             onPressed: () async {
               final oldPass = oldPasswordController.text.trim();
               final newPass = newPasswordController.text.trim();
               final confirmPass = confirmPasswordController.text.trim();
 
               if (oldPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
-                Get.snackbar("Error", "Semua field harus diisi");
+                Get.snackbar(
+                  "Error",
+                  "Semua field harus diisi",
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
                 return;
               }
 
               if (newPass != confirmPass) {
-                Get.snackbar("Error", "Konfirmasi password tidak cocok");
+                Get.snackbar(
+                  "Error",
+                  "Konfirmasi password tidak cocok",
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
                 return;
               }
 
@@ -122,7 +166,15 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
                 );
               }
             },
-            child: const Text("Simpan"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            ),
+            child: const Text("Simpan", style: TextStyle(fontSize: 14)),
           ),
         ],
       ),
@@ -163,15 +215,59 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
   }
 
   Widget _buildProfileImage(String? url) {
-    return CircleAvatar(
-      radius: 55,
-      backgroundColor: Colors.grey.shade300,
-      backgroundImage: (url != null && url.isNotEmpty)
-          ? NetworkImage(url)
-          : null,
-      child: (url == null || url.isEmpty)
-          ? const Icon(Icons.camera_alt, size: 36, color: Colors.white70)
-          : null,
+    return GestureDetector(
+      onTap: () async {
+        final picker = ImagePicker();
+        final picked = await picker.pickImage(source: ImageSource.gallery);
+
+        if (picked != null) {
+          final file = File(picked.path);
+          final newUrl = await _authService.uploadProfilePicture(file);
+
+          if (newUrl != null) {
+            setState(() {
+              _profile!['profile_pict'] = newUrl;
+            });
+            Get.snackbar(
+              "Berhasil",
+              "Foto profil diperbarui",
+              backgroundColor: Colors.green,
+              colorText: Colors.white,
+            );
+          } else {
+            Get.snackbar(
+              "Gagal",
+              "Upload foto gagal",
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+            );
+          }
+        }
+      },
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          CircleAvatar(
+            radius: 55,
+            backgroundColor: Colors.grey.shade200,
+            backgroundImage: (url != null && url.isNotEmpty)
+                ? NetworkImage(url)
+                : null,
+            child: (url == null || url.isEmpty)
+                ? const Icon(Icons.person, size: 50, color: Colors.white70)
+                : null,
+          ),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.amber,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            padding: const EdgeInsets.all(6),
+            child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+          ),
+        ],
+      ),
     );
   }
 
@@ -247,20 +343,28 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
                               ),
                               _buildTextField("Alamat", _profile!['address']),
                               const SizedBox(height: 5),
-                              Row(
+                              Column(
                                 children: [
-                                  Expanded(
+                                  // 🔹 Tombol Edit
+                                  SizedBox(
+                                    width: double.infinity,
                                     child: ElevatedButton.icon(
-                                      onPressed: () {
-                                        Get.toNamed('/editprofileuser');
-                                      },
-                                      icon: const Icon(Icons.edit, size: 18),
+                                      onPressed: () =>
+                                          Get.toNamed('/editprofileuser'),
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        size: 20,
+                                        color: Colors.black87,
+                                      ),
                                       label: const Text(
-                                        "Edit",
-                                        style: TextStyle(fontSize: 16),
+                                        "Edit Profil",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
                                       ),
                                       style: ElevatedButton.styleFrom(
-                                        foregroundColor: Colors.black,
                                         backgroundColor: Colors.white,
                                         elevation: 2,
                                         padding: const EdgeInsets.symmetric(
@@ -268,61 +372,135 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
                                         ),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            14,
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
+                                  const SizedBox(height: 12),
+
+                                  // 🔹 Tombol Ubah Password
+                                  SizedBox(
+                                    width: double.infinity,
                                     child: ElevatedButton.icon(
                                       onPressed: _showChangePasswordDialog,
-                                      icon: const Icon(Icons.lock_outline),
-                                      label: const Text("Ubah Password"),
+                                      icon: const Icon(
+                                        Icons.lock_outline,
+                                        size: 20,
+                                        color: Colors.white,
+                                      ),
+
+                                      label: const Text(
+                                        "Ubah Password",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                       style: ElevatedButton.styleFrom(
-                                        foregroundColor: Colors.white,
                                         backgroundColor: Colors.orange,
+                                        elevation: 2,
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 14,
                                         ),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            14,
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton(
+                                  const SizedBox(height: 12),
+
+                                  // 🔹 Tombol Logout
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
                                       onPressed: () async {
                                         final confirmed = await Get.dialog<bool>(
                                           AlertDialog(
-                                            title: const Text(
-                                              "Konfirmasi Logout",
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                            ),
+                                            titlePadding:
+                                                const EdgeInsets.fromLTRB(
+                                                  20,
+                                                  16,
+                                                  20,
+                                                  8,
+                                                ),
+                                            contentPadding:
+                                                const EdgeInsets.fromLTRB(
+                                                  20,
+                                                  0,
+                                                  20,
+                                                  8,
+                                                ),
+                                            actionsPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 6,
+                                                ),
+                                            title: Row(
+                                              children: const [
+                                                Icon(
+                                                  Icons.logout_rounded,
+                                                  color: Colors.red,
+                                                  size: 22,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  "Konfirmasi Logout",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                             content: const Text(
                                               "Apakah kamu yakin ingin logout?",
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.black87,
+                                              ),
                                             ),
                                             actions: [
                                               TextButton(
                                                 onPressed: () =>
                                                     Get.back(result: false),
-                                                child: const Text("Batal"),
+                                                child: const Text(
+                                                  "Batal",
+                                                  style: TextStyle(
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
                                               ),
-                                              TextButton(
+                                              ElevatedButton(
                                                 onPressed: () =>
                                                     Get.back(result: true),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.red,
+                                                  foregroundColor: Colors.white,
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 10,
+                                                      ),
+                                                  textStyle: const TextStyle(
+                                                    fontSize: 14,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                ),
                                                 child: const Text("Logout"),
                                               ),
                                             ],
@@ -347,20 +525,30 @@ class _ProfileUserScreenState extends State<ProfileUserScreen> {
                                           }
                                         }
                                       },
+                                      icon: const Icon(
+                                        Icons.logout,
+                                        size: 20,
+                                        color: Colors.white,
+                                      ),
+                                      label: const Text(
+                                        "Logout",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.red,
+                                        elevation: 2,
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 14,
                                         ),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            14,
                                           ),
                                         ),
-                                      ),
-                                      child: const Text(
-                                        "Logout",
-                                        style: TextStyle(color: Colors.white),
                                       ),
                                     ),
                                   ),

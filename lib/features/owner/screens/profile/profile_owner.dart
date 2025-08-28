@@ -1,11 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:bengkel/app/routers.dart';
+import 'package:bengkel/constants/api_base.dart';
+import 'package:bengkel/features/auth_owner/services/auth_owner_service.dart';
 import 'package:bengkel/features/owner/services/store_service.dart';
 import 'package:bengkel/models/bengkel_model.dart';
 import 'package:bengkel/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileOwnerScreen extends StatefulWidget {
   const ProfileOwnerScreen({super.key});
@@ -24,7 +28,8 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final email = GetStorage().read('email');
-
+  final authService = AuthOwnerService();
+  final box = GetStorage();
   UserModel? user;
 
   String token = '';
@@ -41,13 +46,15 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
   List<TextEditingController> latControllers = [];
   List<TextEditingController> longControllers = [];
   List<List<String>> selectedVehicleTypes = []; // untuk kendaraan mobil/motor
+  // state
+  List<File?> selectedStoreImages = [];
 
   List<bool> isEditing = [];
 
   @override
   void initState() {
     super.initState();
-
+    selectedStoreImages = List.generate(localStoreList.length, (_) => null);
     final userMap = GetStorage().read('user');
     if (userMap != null) {
       user = UserModel.fromJson(userMap);
@@ -68,7 +75,7 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
 
     final dynamic userRaw = box.read('user');
     final savedToken = box.read('token') ?? '';
-    this.token = savedToken;
+    token = savedToken;
 
     Map<String, dynamic> userMap = {};
     if (userRaw is Map<String, dynamic>) {
@@ -171,14 +178,22 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
 
       setState(() {
         localStoreList = fetchedStores;
-        isStoreLoading = List.filled(
-          localStoreList.length,
-          false,
-        ); // <- tambahkan ini
+        isStoreLoading = List.filled(localStoreList.length, false);
+
+        // reset semua controller/list
         nameControllers = [];
         addressControllers = [];
         phoneControllers = [];
-
+        contactNameControllers = [];
+        openAtControllers = [];
+        closeAtControllers = [];
+        latControllers = [];
+        longControllers = [];
+        selectedVehicleTypes = [];
+        selectedStoreImages = List<File?>.filled(
+          localStoreList.length,
+          null,
+        ); // 👈 WAJIB
         isEditing = [];
 
         for (var store in localStoreList) {
@@ -221,9 +236,14 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double statusBar = MediaQuery.of(context).padding.top;
+    final double appBarStackHeight =
+        statusBar + kToolbarHeight + kTextTabBarHeight;
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
           title: const Text(
             'Profile',
@@ -233,20 +253,40 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
               color: Colors.black,
             ),
           ),
-          backgroundColor: Colors.white,
-          elevation: 1,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           bottom: const TabBar(
             labelColor: Colors.black,
-            indicatorColor: Colors.blue,
+            indicatorColor: Colors.grey,
             tabs: [
               Tab(text: 'Data Pemilik'),
               Tab(text: 'Data Bengkel'),
             ],
           ),
         ),
-        body: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : TabBarView(children: [_buildOwnerTab(), _buildWorkshopTab()]),
+        body: Stack(
+          children: [
+            // Wave Background (di belakang AppBar + konten)
+            ClipPath(
+              clipper: BookingWaveClipper2(),
+              child: Container(height: 220, color: Colors.yellow.shade200),
+            ),
+            ClipPath(
+              clipper: BookingWaveClipper1(),
+              child: Container(height: 200, color: Colors.amber),
+            ),
+
+            // Konten Tab
+            Padding(
+              padding: EdgeInsets.only(top: appBarStackHeight + 12),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : TabBarView(
+                      children: [_buildOwnerTab(), _buildWorkshopTab()],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -257,10 +297,46 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
       child: Column(
         children: [
           const SizedBox(height: 10),
-          const CircleAvatar(
-            radius: 50,
-            backgroundColor: Color(0xFFD9D9D9),
-            child: Icon(Icons.person, size: 40, color: Colors.white),
+          Stack(
+            children: [
+              GestureDetector(
+                onTap: () async {
+                  final picked = await ImagePicker().pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (picked == null) return;
+
+                  final url = await authService.uploadProfilePicture(
+                    File(picked.path),
+                  );
+                  if (url != null) {
+                    setState(() {});
+                    Get.snackbar("Sukses", "Foto profil berhasil diperbarui");
+                  }
+                },
+                child: CircleAvatar(
+                  radius: 55,
+                  backgroundImage: box.read('profile_pict') != null
+                      ? NetworkImage(box.read('profile_pict'))
+                      : null,
+                  child: box.read('profile_pict') == null
+                      ? const Icon(Icons.person, size: 40)
+                      : null,
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.edit, size: 16, color: Colors.white),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Text(
@@ -279,28 +355,25 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
           isEditingUser
               ? _buildTextField('Nama', nameController)
               : _buildProfileField('Nama', user!.name),
-
           isEditingUser
               ? _buildTextField('Email', emailController)
               : _buildProfileField('Email', user!.email),
-
           isEditingUser
               ? _buildTextField('Alamat', addressController)
               : _buildProfileField('Alamat', user!.address),
-
           isEditingUser
               ? _buildTextField('No. Telepon', phoneController)
               : _buildProfileField(
                   'No. Telepon',
                   user!.phone.isNotEmpty ? user!.phone : '-',
                 ),
+          const SizedBox(height: 25),
 
-          const SizedBox(height: 30),
+          // 🔹 Button Edit / Simpan Profil
           Center(
             child: ElevatedButton.icon(
               onPressed: () async {
                 if (isEditingUser) {
-                  // Validasi: semua field harus diisi
                   if (nameController.text.trim().isEmpty ||
                       emailController.text.trim().isEmpty ||
                       phoneController.text.trim().isEmpty ||
@@ -358,74 +431,146 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
                     )
-                  : Icon(isEditingUser ? Icons.save : Icons.edit, size: 16),
-              label: Text(isEditingUser ? 'Simpan' : 'Edit Profil Pengguna'),
+                  : Icon(
+                      isEditingUser ? Icons.save_rounded : Icons.edit_rounded,
+                      size: 18,
+                    ),
+              label: Text(
+                isEditingUser ? 'Simpan Perubahan' : 'Edit Profil',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
+                backgroundColor: Colors.amber.shade200,
                 foregroundColor: Colors.black,
-                elevation: 3,
+                elevation: 2,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+                  horizontal: 26,
+                  vertical: 14,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
             ),
           ),
+
           const SizedBox(height: 16),
 
+          // 🔹 Button Ubah Password
           ElevatedButton.icon(
             onPressed: _showChangePasswordDialog,
-            icon: const Icon(Icons.lock_outline),
-            label: const Text("Ubah Password"),
+            icon: const Icon(Icons.lock_outline_rounded, size: 18),
+            label: const Text(
+              "Ubah Password",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
+              backgroundColor: Colors.orange.shade400,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
+
           const SizedBox(height: 16),
-          ElevatedButton(
+
+          // 🔹 Button Logout
+          ElevatedButton.icon(
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
-                  title: const Text("Konfirmasi Logout"),
-                  content: const Text("Apakah kamu yakin ingin logout?"),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  backgroundColor: Colors.white,
+                  titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                  contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  actionsPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+
+                  // 🔹 Judul dengan icon
+                  title: Row(
+                    children: const [
+                      Icon(Icons.logout_rounded, color: Colors.red, size: 26),
+                      SizedBox(width: 10),
+                      Text(
+                        "Konfirmasi Logout",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // 🔹 Isi konten
+                  content: const Text(
+                    "Apakah kamu yakin ingin keluar dari akun ini?",
+                    style: TextStyle(fontSize: 15, height: 1.4),
+                  ),
+
+                  // 🔹 Tombol aksi
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text("Batal"),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[700],
+                      ),
+                      child: const Text(
+                        "Batal",
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
                     ),
-                    TextButton(
+                    ElevatedButton(
                       onPressed: () {
                         GetStorage().erase();
                         Navigator.of(context).pop();
                         Get.offAllNamed(Routers.login);
                       },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                       child: const Text(
                         "Logout",
-                        style: TextStyle(color: Colors.red),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
                 ),
               );
             },
-            child: const Text('Logout'),
+            icon: const Icon(Icons.logout_rounded, size: 18),
+            label: const Text(
+              'Logout',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.red.shade400,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
@@ -448,7 +593,6 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
           ...localStoreList.asMap().entries.map((entry) {
             int index = entry.key;
             final store = entry.value;
-
             final isEditMode = isEditing[index];
 
             return Container(
@@ -469,14 +613,59 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      store.storeName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    // ✅ FOTO BENGKEL
+                    Center(
+                      child: GestureDetector(
+                        onTap: isEditMode
+                            ? () async {
+                                final picked = await ImagePicker().pickImage(
+                                  source: ImageSource.gallery,
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    selectedStoreImages[index] = File(
+                                      picked.path,
+                                    );
+                                  });
+                                }
+                              }
+                            : null,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: selectedStoreImages[index] != null
+                              ? Image.file(
+                                  selectedStoreImages[index]!,
+                                  width: 150,
+                                  height: 150,
+                                  fit: BoxFit.cover,
+                                )
+                              : (store.image != null
+                                    ? Image.network(
+                                        "${ApiBase.imageUrl}${store.image!}",
+                                        width: 150,
+                                        height: 150,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                width: 150,
+                                                height: 150,
+                                                color: Colors.grey[200],
+                                                child: const Icon(
+                                                  Icons.store,
+                                                  size: 50,
+                                                  color: Colors.grey,
+                                                ),
+                                              );
+                                            },
+                                      )
+                                    : null),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
+
+                    // ✅ MODE EDIT ATAU TAMPILAN NORMAL
                     isEditMode
                         ? Column(
                             children: [
@@ -513,132 +702,152 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
                                 longControllers[index],
                               ),
 
-                              // Dropdown Checkbox Kendaraan
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Jenis Kendaraan yang Dilayani',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 14,
-                                        color: Colors.black54,
+                              // ✅ Tombol Simpan
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  // Tombol Simpan
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green.shade600,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: 8.0,
-                                      children: ['mobil', 'motor'].map((type) {
-                                        final isSelected =
-                                            selectedVehicleTypes[index]
-                                                .contains(type);
-                                        return FilterChip(
-                                          label: Text(type),
-                                          selected: isSelected,
-                                          onSelected: (bool selected) {
-                                            setState(() {
-                                              if (selected) {
-                                                selectedVehicleTypes[index].add(
-                                                  type,
+                                      onPressed: isStoreLoading[index]
+                                          ? null
+                                          : () async {
+                                              setState(() {
+                                                isStoreLoading[index] = true;
+                                              });
+
+                                              final isSuccess = await storeService
+                                                  .updateStoreProfile(
+                                                    storeId: store.id,
+                                                    storeName:
+                                                        nameControllers[index]
+                                                            .text,
+                                                    address:
+                                                        addressControllers[index]
+                                                            .text,
+                                                    contact:
+                                                        phoneControllers[index]
+                                                            .text,
+                                                    contactName:
+                                                        contactNameControllers[index]
+                                                            .text,
+                                                    lat:
+                                                        double.tryParse(
+                                                          latControllers[index]
+                                                              .text,
+                                                        ) ??
+                                                        0.0,
+                                                    long:
+                                                        double.tryParse(
+                                                          longControllers[index]
+                                                              .text,
+                                                        ) ??
+                                                        0.0,
+                                                    openAt:
+                                                        openAtControllers[index]
+                                                            .text,
+                                                    closeAt:
+                                                        closeAtControllers[index]
+                                                            .text,
+                                                    acceptedVehicleTypes:
+                                                        selectedVehicleTypes[index],
+                                                    image:
+                                                        selectedStoreImages[index],
+                                                  );
+
+                                              setState(() {
+                                                isStoreLoading[index] = false;
+                                              });
+
+                                              if (isSuccess) {
+                                                await _loadStoreData();
+                                                setState(() {
+                                                  isEditing[index] = false;
+                                                  selectedStoreImages[index] =
+                                                      null;
+                                                });
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      '✅ Bengkel berhasil diperbarui',
+                                                    ),
+                                                  ),
                                                 );
                                               } else {
-                                                selectedVehicleTypes[index]
-                                                    .remove(type);
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      '❌ Gagal memperbarui data bengkel',
+                                                    ),
+                                                  ),
+                                                );
                                               }
-                                            });
-                                          },
-                                        );
-                                      }).toList(),
+                                            },
+                                      child: isStoreLoading[index]
+                                          ? const CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            )
+                                          : const Text(
+                                              "💾 Simpan",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  ),
 
-                              SizedBox(height: 10),
-                              ElevatedButton(
-                                onPressed: isStoreLoading[index]
-                                    ? null
-                                    : () async {
-                                        setState(() {
-                                          isStoreLoading[index] = true;
-                                        });
+                                  const SizedBox(width: 10),
 
-                                        final isSuccess = await storeService
-                                            .updateStoreProfile(
-                                              storeId: store.id,
-                                              storeName:
-                                                  nameControllers[index].text,
-                                              address: addressControllers[index]
-                                                  .text,
-                                              contact:
-                                                  phoneControllers[index].text,
-                                              contactName:
-                                                  contactNameControllers[index]
-                                                      .text,
-                                              lat:
-                                                  double.tryParse(
-                                                    latControllers[index].text,
-                                                  ) ??
-                                                  0.0,
-                                              long:
-                                                  double.tryParse(
-                                                    longControllers[index].text,
-                                                  ) ??
-                                                  0.0,
-                                              openAt:
-                                                  openAtControllers[index].text,
-                                              closeAt: closeAtControllers[index]
-                                                  .text,
-                                              acceptedVehicleTypes:
-                                                  selectedVehicleTypes[index],
-                                              image:
-                                                  null, // Tambahkan jika ingin upload gambar
-                                            );
-
-                                        setState(() {
-                                          isStoreLoading[index] = false;
-                                        });
-
-                                        if (isSuccess) {
-                                          await _loadStoreData(); // Refresh seluruh data dan controller dari API
-
-                                          setState(() {
-                                            isEditing[index] = false;
-                                          });
-
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                '✅ Bengkel berhasil diperbarui',
-                                              ),
-                                            ),
-                                          );
-                                        } else {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                '❌ Gagal memperbarui data bengkel',
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                child: isStoreLoading[index]
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
+                                  // Tombol Batal
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade600,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
                                         ),
-                                      )
-                                    : const Text('Simpan'),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          isEditing[index] = false;
+                                          selectedStoreImages[index] =
+                                              null; // reset image kalau perlu
+                                        });
+                                      },
+                                      child: const Text(
+                                        "❌ Batal",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           )
@@ -669,8 +878,8 @@ class _ProfileOwnerScreenState extends State<ProfileOwnerScreen> {
                                   icon: const Icon(Icons.edit),
                                   label: const Text("Edit"),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue,
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: Colors.amber,
+                                    foregroundColor: Colors.black,
                                   ),
                                 ),
                               ),
@@ -754,4 +963,67 @@ Widget _buildProfileField(String label, String value) {
       ],
     ),
   );
+}
+
+// =====================
+// Wave clippers (Booking)
+// =====================
+class BookingWaveClipper1 extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    var path = Path();
+    path.lineTo(0, size.height - 40);
+    var firstControlPoint = Offset(size.width / 4, size.height - 10);
+    var firstEndPoint = Offset(size.width / 2, size.height - 25);
+    var secondControlPoint = Offset(size.width * 3 / 4, size.height - 40);
+    var secondEndPoint = Offset(size.width, size.height - 5);
+    path.quadraticBezierTo(
+      firstControlPoint.dx,
+      firstControlPoint.dy,
+      firstEndPoint.dx,
+      firstEndPoint.dy,
+    );
+    path.quadraticBezierTo(
+      secondControlPoint.dx,
+      secondControlPoint.dy,
+      secondEndPoint.dx,
+      secondEndPoint.dy,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+class BookingWaveClipper2 extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    var path = Path();
+    path.lineTo(0, size.height - 20);
+    var firstControlPoint = Offset(size.width / 4, size.height);
+    var firstEndPoint = Offset(size.width / 2, size.height - 20);
+    var secondControlPoint = Offset(size.width * 3 / 4, size.height - 35);
+    var secondEndPoint = Offset(size.width, size.height - 8);
+    path.quadraticBezierTo(
+      firstControlPoint.dx,
+      firstControlPoint.dy,
+      firstEndPoint.dx,
+      firstEndPoint.dy,
+    );
+    path.quadraticBezierTo(
+      secondControlPoint.dx,
+      secondControlPoint.dy,
+      secondEndPoint.dx,
+      secondEndPoint.dy,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
